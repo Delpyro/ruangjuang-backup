@@ -41,12 +41,13 @@ new #[Layout('layouts.guest', ['vite_assets' => ['resources/css/auth/login.css',
                     id="email" 
                     type="email" 
                     placeholder="Masukkan alamat email" 
-                    class="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light transition duration-300"
+                    {{-- Hapus padding kiri (pl-10) --}}
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light transition duration-300"
                     required
                     autofocus
                     autocomplete="username"
                 >
-                <i class="fas fa-envelope absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                {{-- Hapus elemen <i> ikon --}}
             </div>
             <x-input-error :messages="$errors->get('form.email')" class="mt-2" />
         </div>
@@ -68,11 +69,12 @@ new #[Layout('layouts.guest', ['vite_assets' => ['resources/css/auth/login.css',
                     id="password" 
                     type="password" 
                     placeholder="Masukkan kata sandi" 
-                    class="w-full px-4 py-3 pl-10 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light transition duration-300"
+                    {{-- Hapus padding kiri (pl-10) --}}
+                    class="w-full px-4 py-3 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light transition duration-300"
                     required
                     autocomplete="current-password"
                 >
-                <i class="fas fa-lock absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                {{-- Hapus elemen <i> ikon --}}
                 <button type="button" id="togglePassword" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
                     <i class="fas fa-eye"></i>
                 </button>

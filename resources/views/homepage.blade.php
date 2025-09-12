@@ -24,7 +24,7 @@
         <div class="container mx-auto flex justify-between items-center">
             <div class="flex items-center">
                 <a href="#beranda">
-                    <img src="{{ asset('images/logorj.png') }}" alt="Logo RuangJuang" class="h-12">
+                    <img src="{{ asset('images/logorj.png') }}" alt="Logo RuangJuang" class="h-16">
                 </a>
             </div>
 
@@ -37,7 +37,7 @@
             </div>
 
             <div class="flex items-center space-x-4">
-               <a href="{{ route('register') }}" class="px-4 py-2 bg-primary text-white rounded-full font-medium hover:bg-primary-dark transition-colors hidden md:block">Daftar Try Out</a>
+                <a href="{{ route('register') }}" class="px-4 py-2 bg-primary text-white rounded-full font-medium hover:bg-primary-dark transition-colors hidden md:block">Daftar Try Out</a>
                 <button id="hamburger" class="hamburger md:hidden flex flex-col space-y-1.5 w-6 h-6 justify-center items-center">
                     <span class="hamburger-line block w-6 h-0.5 bg-gray-800 rounded"></span>
                     <span class="hamburger-line block w-6 h-0.5 bg-gray-800 rounded"></span>
@@ -59,16 +59,11 @@
     </nav>
     
     <header id="beranda" class="gradient-bg pt-32 pb-20 text-white overflow-hidden relative">
-        <div class="absolute inset-0 opacity-10">
-            <div class="absolute top-20 left-10 w-72 h-72 bg-white rounded-full blur-3xl opacity-20 animate-float"></div>
-            <div class="absolute bottom-10 right-10 w-96 h-96 bg-primary-light rounded-full blur-3xl opacity-20 animate-float" style="animation-delay: 2s;"></div>
-        </div>
-
         <div class="container mx-auto px-4 relative z-10">
             <div class="flex flex-col lg:flex-row items-center">
                 <div class="lg:w-1/2 text-center lg:text-left mb-10 lg:mb-0" data-aos="fade-right">
                     <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">SIAP TEMBUS TES KEDINASAN & CPNS</h1>
-                    <p class="text-xl md:text-2xl mb-8 font-light">Raih impianmu dengan persiapan terbaik di Ruang Juang</p>
+                    <p class="text-xl md:text-2xl mb-8 font-light">Raih impianmu dengan persiapan materi dan Try Out terbaik di Ruang Juang</p>
                     <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
                         <a href="{{ route('register') }}" class="px-8 py-4 bg-white text-primary rounded-full font-semibold text-lg hover:bg-gray-100 transition-colors flex items-center justify-center space-x-2">
                             <span>Daftar Try Out</span>
@@ -83,8 +78,6 @@
                 <div class="lg:w-1/2" data-aos="fade-left" data-aos-delay="300">
                     <div class="relative">
                         <img src="{{ asset('images/praja.jpeg') }}" alt="Main Banner" class="rounded-2xl shadow-2xl w-full max-w-xl mx-auto transform rotate-2">
-                        <div class="absolute -bottom-6 -left-6 w-32 h-32 bg-primary-light rounded-2xl shadow-2xl -z-10 animate-float" style="animation-delay: 1s;"></div>
-                        <div class="absolute -top-6 -right-6 w-24 h-24 bg-accent rounded-2xl shadow-2xl -z-10 animate-float" style="animation-delay: 2s;"></div>
                     </div>
                 </div>
             </div>
@@ -95,32 +88,47 @@
         <div class="container mx-auto px-4">
             <div class="text-center mb-16" data-aos="fade-up">
                 <h2 class="text-3xl md:text-4xl font-bold mb-4">Tentang Ruang Juang</h2>
-                <p class="text-lg text-gray-600 max-w-3xl mx-auto">Ruang Juang adalah bimbingan belajar khusus yang fokus pada persiapan tes kedinasan dan CPNS. Kami hadir dengan metode pembelajaran terbaik dan materi yang selalu update untuk membantu kamu meraih kesuksesan.</p>
+                <p class="text-lg text-gray-600 max-w-3xl mx-auto">Ruang Juang adalah bimbingan belajar khusus yang fokus pada persiapan tes kedinasan dan CPNS. Kami hadir dengan metode pembelajaran dan pelaihan Try Out terbaik serta materi dan soal yang selalu update untuk membantu kamu meraih kesuksesan.</p>
             </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div class="bg-gray-50 rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow" data-aos="fade-up" data-aos-delay="100">
-                    <div class="feature-icon mx-auto flex items-center justify-center w-[70px] h-[70px] rounded-full mb-6">
-                        <i class="fas fa-book text-white text-2xl"></i>
-                    </div>
-                    <h3 class="text-xl font-semibold mb-4 text-center">Materi Terupdate</h3>
-                    <p class="text-gray-600 text-center">Kami selalu memperbarui materi sesuai dengan perkembangan terbaru dari pola tes kedinasan dan CPNS.</p>
+            
+            <div class="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+                <div class="p-8 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl shadow-xl border border-blue-100 space-y-4" data-aos="fade-right" data-aos-delay="200">
+                    <h3 class="text-2xl font-bold text-primary-dark">Kenapa harus Ruang Juang?</h3>
+                    <p class="text-lg text-gray-800 leading-relaxed text-justify">
+                        Karena setiap tahun, ribuan pejuang gagal bukan karena mereka tidak pintar, tetapi karena mereka tidak siap. Apakah kamu mau menjadi salah satunya? Ingat, satu langkah terlambat bisa membuatmu hanya menjadi penonton saat nama orang lain diumumkan lolos. Bayangkan wajah orang tuamu yang tersenyum bangga saat kamu resmi dilantik menjadi taruna atau CPNS. Semua itu bukan sekadar angan. Bersama Ruang Juang, mimpi itu bisa kamu wujudkan.
+                    </p>
+                    <p class="text-lg text-gray-800 leading-relaxed text-justify">
+                        Sainganmu bukan puluhan, tapi puluhan ribu. Pemenang bukanlah yang paling pintar, melainkan mereka yang paling siap dan berani memulai lebih dulu. Setiap detik yang kamu tunda, ada ribuan pesaing lain yang selangkah lebih maju darimu.
+                    </p>
+                    <p class="text-lg text-gray-800 leading-relaxed text-justify">
+                        Kesuksesan bukan milik orang yang hanya bermimpi. Kesuksesan milik mereka yang berani mengambil langkah hari ini. Amankan kursimu sekarang, sebelum kesempatan itu direbut orang lain. Dengan soal terupdate, simulasi nyata, dan mentor berpengalaman, Ruang Juang siap mengantarkanmu lolos kedinasan & CPNS.
+                    </p>
                 </div>
-
-                <div class="bg-gray-50 rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow" data-aos="fade-up" data-aos-delay="200">
-                    <div class="feature-icon mx-auto flex items-center justify-center w-[70px] h-[70px] rounded-full mb-6">
-                        <i class="fas fa-chalkboard-teacher text-white text-2xl"></i>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                    <div class="bg-gray-50 rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow" data-aos="fade-up" data-aos-delay="100">
+                        <div class="feature-icon mx-auto flex items-center justify-center w-[70px] h-[70px] rounded-full mb-6">
+                            <i class="fas fa-book text-white text-2xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold mb-4 text-center">Materi Terupdate</h3>
+                        <p class="text-gray-600 text-center">Kami selalu memperbarui materi sesuai dengan perkembangan terbaru dari pola tes kedinasan dan CPNS.</p>
                     </div>
-                    <h3 class="text-xl font-semibold mb-4 text-center">Tentor Berpengalaman</h3>
-                    <p class="text-gray-600 text-center">Pengajar kami memiliki segudang pengalaman dalam hal Seleksi Kompetensi Dasar</p>
-                </div>
-
-                <div class="bg-gray-50 rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow" data-aos="fade-up" data-aos-delay="300">
-                    <div class="feature-icon mx-auto flex items-center justify-center w-[70px] h-[70px] rounded-full mb-6">
-                        <i class="fas fa-chart-line text-white text-2xl"></i>
+                
+                    <div class="bg-gray-50 rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow" data-aos="fade-up" data-aos-delay="200">
+                        <div class="feature-icon mx-auto flex items-center justify-center w-[70px] h-[70px] rounded-full mb-6">
+                            <i class="fas fa-chalkboard-teacher text-white text-2xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold mb-4 text-center">Tentor Berpengalaman</h3>
+                        <p class="text-gray-600 text-center">Pengajar kami memiliki segudang pengalaman dalam hal Seleksi Kompetensi Dasar</p>
                     </div>
-                    <h3 class="text-xl font-semibold mb-4 text-center">Try Out Berkala</h3>
-                    <p class="text-gray-600 text-center">Kami menyelenggarakan try out berkala dengan sistem penilaian yang sesuai dengan tes sebenarnya.</p>
+
+                    <div class="bg-gray-50 rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow md:col-span-2 text-center" data-aos="fade-up" data-aos-delay="300">
+                        <div class="feature-icon mx-auto flex items-center justify-center w-[70px] h-[70px] rounded-full mb-6">
+                            <i class="fas fa-chart-line text-white text-2xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold mb-4">Try Out</h3>
+                        <p class="text-gray-600">Kami menyediakan banyak Try Out dengan sistem penilaian dan tampilan yang sesuai dengan tes SKD sebenarnya, lengkap dengan variasi tingkat kesulitan mulai dari standar hingga HOTS.</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -137,18 +145,51 @@
                     <div class="relative mb-6">
                         <img src="{{ asset('images/isnan.jpg') }}" alt="Founder 1" class="rounded-2xl shadow-2xl w-64 h-64 object-cover mx-auto image-focus-top">
                     </div>
-                    <h3 class="text-2xl font-bold mb-2">Isnan Lian Darojad</h3>
-                    <p class="text-lg text-gray-600 mb-4">Founder, Owner & Pengajar</p>
-                    <p class="text-gray-600 italic">"Berdedikasi tinggi dalam mencetak generasi terbaik untuk mengabdi pada negara."</p>
+                   <h2 class="text-3xl font-bold mb-2">Isnan Lian Darojad</h2>
+                    <p class="text-xl text-gray-600 mb-4">Founder, Owner & Pengajar</p>
+                    <p class="text-gray-600 italic">"Kejar apa yang kamu impikan dan doakan apa yang kamu usahakan"</p>
                 </div>
 
                 <div class="flex flex-col items-center text-center" data-aos="fade-left">
                     <div class="relative mb-6">
                         <img src="{{ asset('images/gagah.jpg') }}" alt="Founder 1" class="rounded-2xl shadow-2xl w-64 h-64 object-cover mx-auto image-focus-top">
                     </div>
-                    <h3 class="text-2xl font-bold mb-2">Gagah Edwin Kurniawan</h3>
-                    <p class="text-lg text-gray-600 mb-4">Owner Try Out Ruang Juang</p>
+                   <h2 class="text-3xl font-bold mb-2">Gagah Edwin Kurniawan</h2>
+                    <p class="text-xl text-gray-600 mb-4">Owner Try Out Ruang Juang</p>
                     <p class="text-gray-600 italic">"Untuk melihat pelangi yang indah, kamu harus siap melewati badai, sebab pelangi lahir dari badai yang telah usai."</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="visi-misi" class="py-20 bg-gray-50">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16" data-aos="fade-up">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">Visi dan Misi</h2>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-white rounded-2xl p-8 shadow-lg transition-shadow hover:shadow-xl" data-aos="fade-right" data-aos-delay="100">
+                    <div class="flex items-center mb-4">
+                        <i class="fas fa-eye text-primary text-3xl mr-4"></i>
+                        <h3 class="text-2xl font-bold text-primary">Visi</h3>
+                    </div>
+                    <p class="text-gray-600">Menjadi lembaga bimbingan belajar dan tryout terbaik di Indonesia yang mendampingi generasi muda untuk meraih kesuksesan dalam seleksi sekolah kedinasan dan CPNS, dengan menyediakan layanan berkualitas, inovatif, dan berorientasi pada hasil.</p>
+                </div>
+                
+                <div class="bg-white rounded-2xl p-8 shadow-lg transition-shadow hover:shadow-xl" data-aos="fade-left" data-aos-delay="200">
+                    <div class="flex items-center mb-4">
+                        <i class="fas fa-bullseye text-primary text-3xl mr-4"></i>
+                        <h3 class="text-2xl font-bold text-primary">Misi</h3>
+                    </div>
+                    <ul class="list-disc list-inside space-y-2 text-gray-600">
+                        <li>Menyediakan materi pembelajaran berkualitas tinggi yang selalu terbarukan sesuai dengan standar ujian kedinasan dan CPNS</li>
+                        <li>Menghadirkan tryout berkualitas yang sesuai dengan tes SKD asli dengan sistem penilaian yang akurat serta analisis hasil yang komprehensif untuk mengukur kesiapan peserta, serta memberikan berbagai fasilitas web tryout demi kenyamanan peserta</li>
+                        <li>Menyediakan tutor profesional dan berpengalaman untuk memberikan bimbingan terbaik kepada siswa.</li>
+                        <li>Mengembangkan platform digital yang mudah diakses untuk mempermudah proses belajar dan tryout secara daring</li>
+                        <li>Membangun komunitas belajar yang suportif dan inspiratif guna menciptakan lingkungan yang mendukung keberhasilan siswa</li>
+                        <li>Berkomitmen terhadap kepuasan peserta melalui layanan prima dan hasil yang terukur.</li>
+                    </ul>
                 </div>
             </div>
         </div>
@@ -219,56 +260,60 @@
         </div>
     </section>
 
-    <section id="skor" class="py-20 bg-gray-50">
-        <div class="container mx-auto px-4">
-            <div class="text-center mb-16" data-aos="fade-up">
-                <h2 class="text-3xl md:text-4xl font-bold mb-4 text-primary-dark">Skor Ambang Batas SKD</h2>
-                <p class="text-lg text-gray-600 max-w-3xl mx-auto">Informasi skor ambang batas resmi yang ditetapkan untuk seleksi kompetensi dasar (SKD) tes kedinasan dan CPNS.</p>
-            </div>
-            
-            <div class="overflow-x-auto">
-                <table class="min-w-full text-left bg-white rounded-lg shadow-xl overflow-hidden">
-                    <thead class="bg-primary-dark text-white">
-                        <tr>
-                            <th scope="col" class="px-6 py-4 font-semibold">Jenis Tes</th>
-                            <th scope="col" class="px-6 py-4 font-semibold">Jumlah Soal</th>
-                            <th scope="col" class="px-6 py-4 font-semibold">Bobot Nilai Benar</th>
-                            <th scope="col" class="px-6 py-4 font-semibold">Skor Ambang Batas</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200">
-                        <tr class="hover:bg-gray-100 transition-colors duration-200">
-                            <td class="px-6 py-4">Tes Wawasan Kebangsaan (TWK)</td>
-                            <td class="px-6 py-4">30 soal</td>
-                            <td class="px-6 py-4">5</td>
-                            <td class="px-6 py-4 font-bold text-primary-dark">65</td>
-                        </tr>
-                        <tr class="hover:bg-gray-100 transition-colors duration-200">
-                            <td class="px-6 py-4">Tes Intelegensia Umum (TIU)</td>
-                            <td class="px-6 py-4">35 soal</td>
-                            <td class="px-6 py-4">5</td>
-                            <td class="px-6 py-4 font-bold text-primary-dark">80</td>
-                        </tr>
-                        <tr class="hover:bg-gray-100 transition-colors duration-200">
-                            <td class="px-6 py-4">Tes Karakteristik Pribadi (TKP)</td>
-                            <td class="px-6 py-4">45 soal</td>
-                            <td class="px-6 py-4">1-5</td>
-                            <td class="px-6 py-4 font-bold text-primary-dark">166</td>
-                        </tr>
-                    </tbody>
-                </table>
-                <div class="mt-8 text-center text-gray-600 max-w-2xl mx-auto">
-                    <p><strong>Catatan:</strong> Skor ambang batas dan jumlah soal dapat berubah sesuai dengan kebijakan terbaru dari BKN. Pastikan untuk selalu memeriksa informasi resmi.</p>
-                </div>
+<section id="skor" class="py-12 bg-gray-50">
+    <div class="container mx-auto px-4">
+        <div class="text-center mb-6" data-aos="fade-up">
+            <h2 class="text-3xl md:text-4xl font-bold mb-4 text-primary-dark">Skor Ambang Batas SKD</h2>
+            <p class="text-lg text-gray-600 max-w-3xl mx-auto">Informasi skor ambang batas resmi yang ditetapkan untuk Seleksi Kompetensi Dasar (SKD) tes kedinasan dan CPNS.</p>
+        </div>
+        
+        <div class="overflow-x-auto no-scrollbar">
+            <table class="min-w-full text-left bg-white rounded-lg shadow-xl overflow-hidden">
+                <thead class="bg-primary-dark text-white">
+                    <tr>
+                        <th scope="col" class="px-6 py-4 font-semibold">Jenis Tes</th>
+                        <th scope="col" class="px-6 py-4 font-semibold">Jumlah Soal</th>
+                        <th scope="col" class="px-6 py-4 font-semibold">Bobot Nilai Benar</th>
+                        <th scope="col" class="px-6 py-4 font-semibold">Skor Ambang Batas</th>
+                        <th scope="col" class="px-6 py-4 font-semibold">Skor Maksimal</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    <tr>
+                        <td class="px-6 py-4">Tes Wawasan Kebangsaan (TWK)</td>
+                        <td class="px-6 py-4">30 soal</td>
+                        <td class="px-6 py-4">5</td>
+                        <td class="px-6 py-4 font-bold text-primary-dark">65</td>
+                        <td class="px-6 py-4">150</td>
+                    </tr>
+                    <tr>
+                        <td class="px-6 py-4">Tes Intelegensia Umum (TIU)</td>
+                        <td class="px-6 py-4">35 soal</td>
+                        <td class="px-6 py-4">5</td>
+                        <td class="px-6 py-4 font-bold text-primary-dark">80</td>
+                        <td class="px-6 py-4">175</td>
+                    </tr>
+                    <tr>
+                        <td class="px-6 py-4">Tes Karakteristik Pribadi (TKP)</td>
+                        <td class="px-6 py-4">45 soal</td>
+                        <td class="px-6 py-4">1-5</td>
+                        <td class="px-6 py-4 font-bold text-primary-dark">166</td>
+                        <td class="px-6 py-4">225</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="mt-8 text-center text-gray-600 max-w-2xl mx-auto">
+                <p><strong>Catatan:</strong> Skor ambang batas dan jumlah soal dapat berubah sesuai dengan kebijakan terbaru dari BKN. Pastikan untuk selalu memeriksa informasi resmi.</p>
             </div>
         </div>
-    </section>
+    </div>
+</section>
 
     <section id="promo" class="py-20 bg-gradient-to-r from-green-50 to-gold-50">
         <div class="container mx-auto px-4">
             <div class="text-center mb-16" data-aos="fade-up">
                 <h2 class="text-3xl md:text-4xl font-bold mb-4">Promo Spesial</h2>
-                <p class="text-lg text-gray-600 max-w-3xl mx-auto">Manfaatkan promo menarik untuk persiapan tes kedinasan dan CPNS-mu</p>
+                <p class="text-lg text-gray-600 max-w-3xl mx-auto">Promo spesial ini tidak berlaku untuk semua orang. Hanya sebagian pengguna yang beruntung bisa menikmatinya. Amankan paketmu sekarang sebelum habis!</p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -378,7 +423,7 @@
             <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
                 <div>
                     <h3 class="text-xl font-bold bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent mb-4">Ruang Juang</h3>
-                    <p class="text-gray-600 mb-4">Bimbingan belajar khusus persiapan tes kedinasan dan CPNS dengan metode terbaik dan materi terupdate.</p>
+                    <p class="text-gray-600 mb-4">Bimbingan belajar dan latihan Try Out untuk persiapan tes kedinasan dan CPNS, dengan metode terbaik serta materi dan soal yang selalu terupdate.</p>
                     <div class="flex space-x-4">
                         <a href="#" class="text-gray-600 hover:text-primary transition-colors">
                             <i class="fab fa-instagram text-xl"></i>
@@ -398,20 +443,19 @@
                 <div>
                     <h4 class="font-semibold text-lg mb-4">Program</h4>
                     <ul class="space-y-2">
-                        <li><a href="#promo" class="nav-link text-gray-600 hover:text-primary transition-colors"><i class="fas fa-laptop-code"></i> Try Out SKD</a></li>
-                        <li><a href="#promo" class="nav-link text-gray-600 hover:text-primary transition-colors"><i class="fas fa-graduation-cap"></i> Bimbel Kedinasan</a></li>
-                        <li><a href="#promo" class="nav-link text-gray-600 hover:text-primary transition-colors"><i class="fas fa-user-tie"></i> Bimbel CPNS</a></li>
-                        <li><a href="#promo" class="nav-link text-gray-600 hover:text-primary transition-colors"><i class="fas fa-chalkboard"></i> Kelas Intensif</a></li>
+                        <li><a href="#promo" class="nav-link text-gray-600 hover:text-primary transition-colors">Try Out SKD</a></li>
+                        <li><a href="#promo" class="nav-link text-gray-600 hover:text-primary transition-colors">Bimbel Kedinasan</a></li>
+                        <li><a href="#promo" class="nav-link text-gray-600 hover:text-primary transition-colors">Bimbel CPNS</a></li>
+                        <li><a href="#promo" class="nav-link text-gray-600 hover:text-primary transition-colors">Kelas Intensif</a></li>
                     </ul>
                 </div>
 
                 <div>
-                    <h4 class="font-semibold text-lg mb-4">Tautan Cepat</h4>
+                    <h4 class="font-semibold text-lg mb-4">Bantuan</h4>
                     <ul class="space-y-2">
-                        <li><a href="#tentang" class="nav-link text-gray-600 hover:text-primary transition-colors"><i class="fas fa-info-circle"></i> Tentang Kami</a></li>
-                        <li><a href="#" class="nav-link text-gray-600 hover:text-primary transition-colors"><i class="fas fa-newspaper"></i> Blog</a></li>
-                        <li><a href="#kontak" class="nav-link text-gray-600 hover:text-primary transition-colors"><i class="fas fa-headset"></i> Kontak</a></li>
-                        <li><a href="#" class="nav-link text-gray-600 hover:text-primary transition-colors"><i class="fas fa-briefcase"></i> Karir</a></li>
+                        <li><a href="#tentang" class="nav-link text-gray-600 hover:text-primary transition-colors">FAQ</a></li>
+                        <li><a href="#" class="nav-link text-gray-600 hover:text-primary transition-colors">Customer Service 1</a></li>
+                        <li><a href="#kontak" class="nav-link text-gray-600 hover:text-primary transition-colors">Customer Service 2</a></li>
                     </ul>
                 </div>
 
@@ -419,13 +463,13 @@
                     <h4 class="font-semibold text-lg mb-4">Kontak</h4>
                     <ul class="space-y-2">
                         <li class="flex items-center text-gray-600">
-                            <i class="fas fa-map-marker-alt mr-2 text-primary"></i> Jakarta, Indonesia
+                            Jakarta, Indonesia
                         </li>
                         <li class="flex items-center text-gray-600">
-                            <i class="fas fa-phone mr-2 text-primary"></i> +62 123 456 789
+                            +62 123 456 789
                         </li>
                         <li class="flex items-center text-gray-600">
-                            <i class="fas fa-envelope mr-2 text-primary"></i> info@ruangjuang.com
+                            info@ruangjuang.com
                         </li>
                     </ul>
                 </div>

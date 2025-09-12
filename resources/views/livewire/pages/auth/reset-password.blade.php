@@ -86,12 +86,13 @@ new #[Layout('layouts.guest', ['vite_assets' => ['resources/css/auth/new-passwor
                     id="email" 
                     type="email" 
                     placeholder="Masukkan alamat email" 
-                    class="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light transition duration-300"
+                    {{-- Hapus padding kiri (pl-10) --}}
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light transition duration-300"
                     required
                     autofocus
                     autocomplete="username"
                 />
-                <i class="fas fa-envelope absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                {{-- Hapus elemen <i> ikon --}}
             </div>
             <x-input-error :messages="$errors->get('email')" class="mt-2 text-sm" />
         </div>
@@ -106,11 +107,12 @@ new #[Layout('layouts.guest', ['vite_assets' => ['resources/css/auth/new-passwor
                     id="password" 
                     type="password" 
                     placeholder="Buat kata sandi baru"
-                    class="w-full px-4 py-3 pl-10 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light transition duration-300"
+                    {{-- Hapus padding kiri (pl-10) --}}
+                    class="w-full px-4 py-3 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light transition duration-300"
                     required
                     autocomplete="new-password" 
                 />
-                <i class="fas fa-lock absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                {{-- Hapus elemen <i> ikon --}}
             </div>
             <x-input-error :messages="$errors->get('password')" class="mt-2 text-sm" />
         </div>
@@ -125,11 +127,12 @@ new #[Layout('layouts.guest', ['vite_assets' => ['resources/css/auth/new-passwor
                     id="password_confirmation" 
                     type="password" 
                     placeholder="Ketik ulang kata sandi baru" 
-                    class="w-full px-4 py-3 pl-10 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light transition duration-300"
+                    {{-- Hapus padding kiri (pl-10) --}}
+                    class="w-full px-4 py-3 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light transition duration-300"
                     required
                     autocomplete="new-password"
                 />
-                <i class="fas fa-lock absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                {{-- Hapus elemen <i> ikon --}}
             </div>
             <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2 text-sm" />
         </div>

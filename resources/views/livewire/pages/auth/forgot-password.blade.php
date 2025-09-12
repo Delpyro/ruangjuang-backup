@@ -41,11 +41,9 @@ new #[Layout('layouts.guest', ['vite_assets' => ['resources/css/auth/reset-passw
         <h2 class="text-4xl font-bold text-primary-dark mb-2">Lupa Password</h2>
         <p class="text-gray-600 mb-10">Masukkan alamat email Anda untuk menerima link reset password.</p>
         
-        <!-- Session Status -->
         <x-auth-session-status class="mb-4 p-4 bg-green-100 text-green-700 rounded-lg border border-green-200" :status="session('status')" />
         
         <form wire:submit="sendPasswordResetLink" class="space-y-6">
-            <!-- Email Address -->
             <div class="space-y-2">
                 <label class="block text-gray-700 font-medium" for="email">
                     <i class="fas fa-envelope text-primary-light mr-2"></i>Email
@@ -56,11 +54,12 @@ new #[Layout('layouts.guest', ['vite_assets' => ['resources/css/auth/reset-passw
                         id="email" 
                         type="email" 
                         placeholder="Masukkan alamat email" 
-                        class="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light transition duration-300"
+                        {{-- Hapus padding kiri (pl-10) --}}
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light transition duration-300"
                         required
                         autofocus
                     >
-                    <i class="fas fa-envelope absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    {{-- Hapus elemen <i> ikon --}}
                 </div>
                 <x-input-error :messages="$errors->get('email')" class="mt-2 text-red-600 text-sm" />
             </div>

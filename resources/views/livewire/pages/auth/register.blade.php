@@ -47,7 +47,8 @@ new #[Layout('layouts.guest', ['vite_assets' => ['resources/css/auth/register.cs
     <form wire:submit="register" class="space-y-4">
         <div class="space-y-1">
             <label class="block text-gray-700 font-medium text-sm" for="name">
-                <i class="fas fa-user text-primary-light mr-1"></i>Nama Lengkap
+                {{-- Perbaikan: Ubah 'mr-1' menjadi 'mr-2' --}}
+                <i class="fas fa-user text-primary-light mr-2"></i>Nama Lengkap
             </label>
             <div class="relative">
                 <input 
@@ -55,19 +56,19 @@ new #[Layout('layouts.guest', ['vite_assets' => ['resources/css/auth/register.cs
                     id="name" 
                     type="text" 
                     placeholder="Nama Lengkap Anda" 
-                    class="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light transition duration-300 text-sm"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light transition duration-300 text-sm"
                     required
                     autofocus
                     autocomplete="name"
                 >
-                <i class="fas fa-user absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
             </div>
             <x-input-error :messages="$errors->get('name')" class="mt-2 text-sm" />
         </div>
 
         <div class="space-y-1">
             <label class="block text-gray-700 font-medium text-sm" for="email">
-                <i class="fas fa-envelope text-primary-light mr-1"></i>Email
+                {{-- Perbaikan: Ubah 'mr-1' menjadi 'mr-2' --}}
+                <i class="fas fa-envelope text-primary-light mr-2"></i>Email
             </label>
             <div class="relative">
                 <input 
@@ -75,18 +76,18 @@ new #[Layout('layouts.guest', ['vite_assets' => ['resources/css/auth/register.cs
                     id="email" 
                     type="email" 
                     placeholder="Alamat email Anda" 
-                    class="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light transition duration-300 text-sm"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light transition duration-300 text-sm"
                     required
                     autocomplete="username"
                 >
-                <i class="fas fa-envelope absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
             </div>
             <x-input-error :messages="$errors->get('email')" class="mt-2 text-sm" />
         </div>
 
         <div class="space-y-1">
             <label class="block text-gray-700 font-medium text-sm" for="phone_number">
-                <i class="fas fa-phone text-primary-light mr-1"></i>Nomor HP
+                {{-- Perbaikan: Ubah 'mr-1' menjadi 'mr-2' --}}
+                <i class="fas fa-phone text-primary-light mr-2"></i>Nomor HP
             </label>
             <div class="relative">
                 <input 
@@ -94,17 +95,17 @@ new #[Layout('layouts.guest', ['vite_assets' => ['resources/css/auth/register.cs
                     id="phone_number" 
                     type="tel" 
                     placeholder="Nomor HP Anda" 
-                    class="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light transition duration-300 text-sm"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light transition duration-300 text-sm"
                     autocomplete="tel"
                 >
-                <i class="fas fa-phone absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
             </div>
             <x-input-error :messages="$errors->get('phone_number')" class="mt-2 text-sm" />
         </div>
         
         <div class="space-y-1">
             <label class="block text-gray-700 font-medium text-sm" for="password">
-                <i class="fas fa-lock text-primary-light mr-1"></i>Password
+                {{-- Perbaikan: Ubah 'mr-1' menjadi 'mr-2' --}}
+                <i class="fas fa-lock text-primary-light mr-2"></i>Password
             </label>
             <div class="relative">
                 <input 
@@ -112,11 +113,10 @@ new #[Layout('layouts.guest', ['vite_assets' => ['resources/css/auth/register.cs
                     id="password" 
                     type="password" 
                     placeholder="Buat kata sandi" 
-                    class="w-full px-4 py-2 pl-10 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light transition duration-300 text-sm"
+                    class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light transition duration-300 text-sm"
                     required
                     autocomplete="new-password"
                 >
-                <i class="fas fa-lock absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
                 <button type="button" id="togglePassword" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm">
                     <i class="fas fa-eye"></i>
                 </button>
@@ -126,7 +126,8 @@ new #[Layout('layouts.guest', ['vite_assets' => ['resources/css/auth/register.cs
 
         <div class="space-y-1">
             <label class="block text-gray-700 font-medium text-sm" for="password_confirmation">
-                <i class="fas fa-lock text-primary-light mr-1"></i>Konfirmasi Password
+                {{-- Perbaikan: Ubah 'mr-1' menjadi 'mr-2' --}}
+                <i class="fas fa-lock text-primary-light mr-2"></i>Konfirmasi Password
             </label>
             <div class="relative">
                 <input 
@@ -134,11 +135,10 @@ new #[Layout('layouts.guest', ['vite_assets' => ['resources/css/auth/register.cs
                     id="password_confirmation" 
                     type="password" 
                     placeholder="Ketik ulang kata sandi" 
-                    class="w-full px-4 py-2 pl-10 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light transition duration-300 text-sm"
+                    class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-light transition duration-300 text-sm"
                     required
                     autocomplete="new-password"
                 >
-                <i class="fas fa-lock absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
                 <button type="button" id="toggleConfirmPassword" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm">
                     <i class="fas fa-eye"></i>
                 </button>

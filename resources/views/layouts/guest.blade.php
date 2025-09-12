@@ -31,31 +31,46 @@
                 <div class="absolute top-1/2 -right-10 w-28 h-28 rounded-full bg-white/20 animate-float"></div>
                 
                 <div class="relative z-10 flex flex-col justify-center h-full">
+                    <!-- Logo diperbesar -->
                     <div class="mb-6 flex justify-center">
-                        <img src="{{ asset('images/logo.jpg') }}" alt="Logo RuangJuang" {{ $attributes->merge(['class' => 'h-20 object-contain animate-float']) }}>
+                        <img src="{{ asset('images/logo.jpg') }}" 
+                             alt="Logo RuangJuang" 
+                             {{ $attributes->merge(['class' => 'h-24 object-contain animate-float']) }}>
                     </div>
                     <p class="text-xl mb-8 text-white/90 text-center">Tempat terbaik untuk mencapai impian dan tujuan Anda</p>
                     
+                    <!-- Badge Section -->
                     <div class="space-y-4 mt-8">
-                        <div class="flex items-center space-x-2 opacity-90">
-                            <div class="w-10 h-10 rounded-full bg-accent/80 flex items-center justify-center animate-pulse">
-                                <i class="fas fa-graduation-cap text-white"></i>
+                        <!-- Badge 1 -->
+                        <div class="flex items-center gap-4">
+                            <div class="flex-shrink-0 w-14 h-14 rounded-full bg-yellow-500 flex items-center justify-center">
+                                <i class="fas fa-graduation-cap text-white text-xl"></i>
                             </div>
-                            <p>Platform belajar terintegrasi</p>
+                            <p class="text-white/90 text-sm font-medium leading-snug max-w-[18rem]">
+                                Platform belajar dan Try Out berkualitas tinggi
+                            </p>
                         </div>
-                        <div class="flex items-center space-x-2 opacity-90">
-                            <div class="w-10 h-10 rounded-full bg-accent/80 flex items-center justify-center animate-pulse animation-delay-500">
-                                <i class="fas fa-book-open text-white"></i>
+
+                        <!-- Badge 2 -->
+                        <div class="flex items-center gap-4">
+                            <div class="flex-shrink-0 w-14 h-14 rounded-full bg-yellow-500 flex items-center justify-center">
+                                <i class="fas fa-book-open text-white text-xl"></i>
                             </div>
-                            <p>Akses materi tanpa batas</p>
+                            <p class="text-white/90 text-sm font-medium leading-snug max-w-[18rem]">
+                                Akses materi dan pembahasan yang mudah dipahami
+                            </p>
                         </div>
-                        <div class="flex items-center space-x-2 opacity-90">
-                            <div class="w-10 h-10 rounded-full bg-accent/80 flex items-center justify-center animate-pulse animation-delay-1000">
-                                <i class="fas fa-users text-white"></i>
+
+                        <!-- Badge 3 -->
+                        <div class="flex items-center gap-4">
+                            <div class="flex-shrink-0 w-14 h-14 rounded-full bg-yellow-500 flex items-center justify-center">
+                                <i class="fas fa-users text-white text-xl"></i>
                             </div>
-                            <p>Komunitas pembelajaran</p>
+                            <p class="text-white/90 text-sm font-medium leading-snug max-w-[18rem]">
+                                Tersedia komunitas belajar SKD bersama untuk orang umum dan eksklusif untuk siswa RJ
+                            </p>
                         </div>
-                    </div>
+                    </div>    
                 </div>
             </div>
             
