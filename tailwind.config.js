@@ -13,7 +13,9 @@ export default {
                     DEFAULT: '#29681E',
                     dark: '#1E4B16',
                 },
-                accent: '#E5B51F',
+                accent: {
+                    DEFAULT: '#E5B51F',
+                },
             },
             fontFamily: {
                 poppins: ['Poppins', 'sans-serif'],
@@ -62,4 +64,4 @@ export default {
         },
     },
     plugins: [],
-}
+};

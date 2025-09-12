@@ -1,0 +1,146 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --gradient-start: #29681E;
+    --gradient-end: #E5B51F;
+
+    /* Custom colors based on the image */
+    --premium-color: #29681E;
+    --ultimate-color: #A37C2C;
+}
+
+/* Perbaikan untuk loading screen dan gradien teks */
+.loading-title {
+    font-size: 3rem; /* text-5xl */
+    font-weight: 700; /* font-bold */
+    background: linear-gradient(135deg, var(--gradient-end), var(--gradient-start));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent; /* fallback */
+    animation: fadein 0.5s forwards;
+}
+
+@keyframes fadein {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.gradient-bg {
+    background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+}
+
+.feature-icon {
+    background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+    box-shadow: 0 10px 25px -5px rgba(41, 104, 30, 0.4);
+}
+
+.hamburger-line {
+    transition: all 0.3s ease;
+}
+
+.hamburger.active .hamburger-line:nth-child(1) {
+    transform: rotate(45deg) translate(5px, 5px);
+}
+
+.hamburger.active .hamburger-line:nth-child(2) {
+    opacity: 0;
+}
+
+.hamburger.active .hamburger-line:nth-child(3) {
+    transform: rotate(-45deg) translate(7px, -6px);
+}
+
+.mobile-menu {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+}
+
+.mobile-menu.open {
+    transform: translateX(0);
+}
+
+#loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 1;
+    transition: opacity 0.5s ease-in-out;
+}
+
+#loading-screen.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+#progress-bar-container {
+    width: 250px;
+    height: 8px;
+    background-color: #e5e7eb;
+    border-radius: 9999px;
+    overflow: hidden;
+    margin-top: 2rem;
+}
+
+#progress-bar {
+    height: 100%;
+    width: 0;
+    background-color: var(--gradient-start);
+    transition: width 2s ease-in-out;
+}
+
+/* Custom CSS for promo card colors */
+.promo-card-premium {
+    border: 1px solid var(--premium-color);
+}
+
+.promo-tag-premium {
+    background-color: var(--premium-color);
+    color: white;
+}
+
+.promo-btn-premium {
+    background-color: var(--premium-color);
+    transition: background-color 0.3s ease;
+}
+
+.promo-btn-premium:hover {
+    background-color: #1a4f15; /* A slightly darker green for hover effect */
+}
+
+.promo-card-ultimate {
+    border: 1px solid var(--ultimate-color);
+}
+
+.promo-tag-ultimate {
+    background-color: var(--ultimate-color);
+    color: white;
+}
+
+.promo-btn-ultimate {
+    background-color: var(--ultimate-color);
+    transition: background-color 0.3s ease;
+}
+
+.promo-btn-ultimate:hover {
+    background-color: #725624; /* A slightly darker brown for hover effect */
+}
+
+/* Custom CSS untuk memposisikan gambar */
+.image-focus-top {
+    object-position: 50% 90%;
+}

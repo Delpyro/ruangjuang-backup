@@ -2,31 +2,14 @@
 
 use Illuminate\Support\Facades\Route;
 
+Route::view('/', 'homepage');
 
-Route::get('/', function () {
-    return view('auth.login');
-})->name('login');
+Route::view('dashboard', 'dashboard')
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
 
-// Rute untuk halaman register
-Route::get('/register', function () {
-    return view('auth.register');
-})->name('register');
+Route::view('profile', 'profile')
+    ->middleware(['auth'])
+    ->name('profile');
 
-
-Route::get('/forgot-password', function () {
-    return view('auth.reset-password');
-})->name('password.request');
-
-Route::get('/verify-otp', function () {
-    return view('auth.verify-otp');
-})->name('password.otp');
-
-
-Route::get('/reset-password/{token}', function ($token) {
-    return view('auth.reset-password', ['token' => $token]);
-})->name('password.reset');
-
-
-Route::get('/new-password-dev', function () {
-    return view('auth.new-password');
-})->name('new-password.dev');
+require __DIR__.'/auth.php';
