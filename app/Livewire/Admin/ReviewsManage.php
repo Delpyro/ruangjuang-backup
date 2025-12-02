@@ -72,7 +72,8 @@ class ReviewsManage extends Component
                 }
                 // Jika 'all', tidak perlu filter
             })
-            ->orderBy('created_at', 'desc') // Tampilkan yang terbaru dulu
+            // PENGURUTAN: Tetap 'desc' agar review terbaru muncul paling atas (sesuai permintaan).
+            ->orderBy('created_at', 'desc') 
             ->paginate(10); // Pagination
 
         return view('livewire.admin.reviews-manage', [
@@ -129,4 +130,4 @@ class ReviewsManage extends Component
         $this->confirmingDeletion = false;
         $this->reviewToDelete = null;
     }
-} // <-- [PERBAIKAN] Pastikan kurung kurawal penutup class ini ada
+}

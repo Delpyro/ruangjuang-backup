@@ -18,14 +18,14 @@
             margin-bottom: 25px;
         }
         .header-top {
-            display: block; /* Block untuk memastikan 100% width */
-            border-bottom: 3px solid #0056b3; /* Garis tebal warna korporat */
+            display: block; 
+            border-bottom: 3px solid #0056b3; 
             padding-bottom: 5px;
         }
         .header h1 {
             font-size: 22px;
             margin: 0;
-            color: #0056b3; /* Warna korporat/biru tua */
+            color: #0056b3; 
             text-transform: uppercase;
             font-weight: 800;
         }
@@ -40,8 +40,8 @@
         .metadata-section {
             margin-bottom: 25px;
             padding: 10px;
-            background-color: #f7f7f7; /* Background abu-abu muda */
-            border-left: 5px solid #007bff; /* Garis vertikal penanda */
+            background-color: #f7f7f7; 
+            border-left: 5px solid #007bff; 
         }
         .metadata-section table {
             width: 100%;
@@ -82,7 +82,7 @@
             text-align: left;
         }
         .data-table th {
-            background-color: #0056b3; /* Header kolom dengan warna utama */
+            background-color: #0056b3; 
             color: #ffffff;
             font-weight: 600;
             text-transform: uppercase;
@@ -101,16 +101,16 @@
         .status-badge {
             font-weight: bold;
             padding: 4px 7px;
-            border-radius: 15px; /* Lebih rounded */
+            border-radius: 15px; 
             font-size: 8px;
             display: inline-block;
             min-width: 60px;
             text-align: center;
         }
-        .status-success { color: #ffffff; background-color: #28a745; } /* Hijau solid */
-        .status-pending { color: #ffffff; background-color: #ffc107; } /* Kuning/emas solid */
-        .status-failed, .status-expire, .status-cancel { color: #ffffff; background-color: #dc3545; } /* Merah solid */
-        .status-other { color: #ffffff; background-color: #6c757d; } /* Abu-abu solid */
+        .status-settlement { color: #ffffff; background-color: #28a745; } /* Menggunakan status model: settlement */
+        .status-pending { color: #ffffff; background-color: #ffc107; } /* pending */
+        .status-expire, .status-deny, .status-cancel { color: #ffffff; background-color: #dc3545; } /* expired, deny, cancel */
+        .status-other { color: #ffffff; background-color: #6c757d; } /* Default/lainnya */
 
     </style>
 </head>
@@ -127,9 +127,20 @@
         <div class="metadata-title">DETAIL LAPORAN</div>
         <table>
             <tr>
+                <td><strong>Item Dilaporkan</strong></td>
+                <td>: 
+                    @if ($itemTitle ?? false) 
+                        {{ strtoupper($itemTitle) }} 
+                        ({{ ucfirst($itemType ?? '-') }})
+                    @else
+                        SEMUA ITEM
+                    @endif
+                </td>
+            </tr>
+            <tr>
                 <td><strong>Status Transaksi</strong></td>
                 <td>: 
-                    @if ($filterStatus == 'all') SEMUA STATUS (Overall) @else {{ strtoupper($filterStatus) }} @endif
+                    @if ($filterStatus == 'all') SEMUA STATUS @else {{ strtoupper($filterStatus) }} @endif
                 </td>
             </tr>
             <tr>
@@ -176,12 +187,13 @@
                         </td>
                         <td>{{ $transaction->user->name ?? 'User Dihapus' }}</td>
                         <td>
+                            {{-- Menggunakan accessor item->title dari model --}}
                             {{ $transaction->item->title ?? 'N/A' }} 
                             <br><small style="color: #007bff; font-weight: 500;">[{{ $transaction->tryout_id ? 'Tryout' : 'Bundle' }}]</small>
                         </td>
                         <td class="amount-col">{{ $transaction->formatted_amount }}</td>
                         <td>
-                            <span class="status-badge status-{{ $transaction->status }}">
+                            <span class="status-badge status-{{ strtolower($transaction->status) }}">
                                 {{ strtoupper($transaction->status) }}
                             </span>
                         </td>
@@ -198,5 +210,5 @@
         </table>
     </div>
     
-    </body>
+</body>
 </html>

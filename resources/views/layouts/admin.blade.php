@@ -11,7 +11,8 @@
     
     @livewireStyles
 </head>
-<body class="bg-gray-100 font-sans antialiased">
+{{-- [!code ++] TAMBAHKAN 'h-screen overflow-hidden' DI SINI --}}
+<body class="bg-gray-100 font-sans antialiased h-screen overflow-hidden">
 
 <div class="flex h-screen">
     <aside class="w-64 bg-white shadow-lg flex flex-col">
@@ -19,7 +20,7 @@
             <h1 class="text-xl font-bold text-gray-800">Dashboard Admin</h1>
         </div>
 
-        <nav class="flex-1 p-4 space-y-1">
+        <nav class="flex-1 p-4 space-y-1 overflow-y-auto"> {{-- Tambahkan overflow-y-auto di sini jika menu sidebar panjang --}}
             <a href="{{ route('admin.dashboard') }}" class="flex items-center px-3 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors duration-200 {{ request()->routeIs('admin.dashboard') ? 'bg-blue-100 text-blue-700' : '' }}">
                 <i class="fas fa-home w-5 h-5 mr-3"></i> Dashboard
             </a>
@@ -63,7 +64,7 @@
     </aside>
 
     <div class="flex-1 flex flex-col overflow-hidden">
-        <header class="h-16 bg-white shadow flex items-center justify-between px-6">
+        <header class="h-16 bg-white shadow flex items-center justify-between px-6 shrink-0"> {{-- Tambahkan shrink-0 --}}
             <h2 class="text-lg font-semibold text-gray-800">
                 @yield('title')
             </h2>
@@ -73,7 +74,8 @@
             </div>
         </header>
 
-        <main class="flex-1 overflow-y-auto p-6">
+        {{-- Area Konten Utama (Scrollable) --}}
+        <main class="flex-1 overflow-x-hidden overflow-y-auto p-6 bg-gray-100">
             @if(session('success'))
                 <div class="mb-6 p-4 bg-green-100 border-l-4 border-green-500 text-green-700 rounded">
                     <div class="flex items-center">
@@ -100,13 +102,13 @@
 @livewireScripts
 @stack('scripts') 
 
-<script src="https://cdn.tiny.cloud/1/5xm5lwtchcvk2tx81tlxeqw5mfmisxo0o6f2isbgh3j6mvf4/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+<script src="https://cdn.tiny.cloud/1/qmkvntzionu0428xa04wcfzfwxsir87e0h0bc2vrdptzppk7/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
 
 <script>
-    // 🚀 PERBAIKAN UTAMA: Mendefinisikan URL upload gambar dari route name Laravel
+    // ?? PERBAIKAN UTAMA: Mendefinisikan URL upload gambar dari route name Laravel
     window.uploadImageUrl = "{{ route('admin.tinymce.upload.image') }}"; 
 
-    // FUNGSI INITIATOR TINYMCE GLOBAL (TERMASU_K LOGIC UPLOAD GAMBAR)
+    // FUNGSI INITIATOR TINYMCE GLOBAL (TERMASUK LOGIC UPLOAD GAMBAR)
     function initTinyMCE(selector, callback) {
         tinymce.init({
             selector: selector,

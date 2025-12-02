@@ -84,6 +84,7 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse ($tryouts as $index => $tryout)
                         <tr class="hover:bg-gray-50 transition-colors duration-150 {{ $tryout->trashed() ? 'bg-red-50' : '' }}">
+                            {{-- PENOMORAN DEFAULT LARAVEL PAGINATION --}}
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ ($tryouts->currentPage() - 1) * $tryouts->perPage() + $index + 1 }}</td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="flex items-center">
@@ -98,7 +99,8 @@
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                {{ $tryout->duration_formatted }}
+                                {{-- asumsi duration_formatted sudah didefinisikan di model atau accessor --}}
+                                {{ $tryout->duration ?? '-' }} menit
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="flex flex-col">
@@ -203,12 +205,12 @@
 
             <div class="flex items-center justify-center min-h-screen p-4 w-xl m-auto">
                 <div class="relative bg-white rounded-lg shadow-xl max-w-4xl w-full mx-auto
-                                 max-h-[90vh] overflow-y-auto transform transition-all">
+                                     max-h-[90vh] overflow-y-auto transform transition-all">
 
                     {{-- Tombol close --}}
                     <button wire:click="closeModal"
                         class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors duration-200
-                                 bg-gray-100 hover:bg-gray-200 rounded-full p-1">
+                                     bg-gray-100 hover:bg-gray-200 rounded-full p-1">
                         {{-- Font Awesome: fa-xmark --}}
                         <i class="fa-solid fa-xmark w-5 h-5"></i>
                     </button>

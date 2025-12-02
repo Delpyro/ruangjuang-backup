@@ -39,7 +39,7 @@
         {{-- Flash message --}}
         @if (session()->has('success'))
             <div class="mb-4 p-4 bg-green-50 text-green-800 rounded-lg border border-green-200 flex items-center justify-between shadow-sm"
-                 x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 3000)" x-transition:leave="transition ease-in duration-300" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+                x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 3000)" x-transition:leave="transition ease-in duration-300" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
                 <div class="flex items-center">
                     <i class="fa-solid fa-circle-check w-5 h-5 mr-3 text-green-600"></i>
                     <span>{{ session('success') }}</span>
@@ -51,7 +51,7 @@
         @endif
         @if (session()->has('error'))
             <div class="mb-4 p-4 bg-red-50 text-red-800 rounded-lg border border-red-200 flex items-center justify-between shadow-sm"
-                 x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 3000)" x-transition:leave="transition ease-in duration-300" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+                x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 3000)" x-transition:leave="transition ease-in duration-300" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
                 <div class="flex items-center">
                     <i class="fa-solid fa-circle-exclamation w-5 h-5 mr-3 text-red-600"></i>
                     <span>{{ session('error') }}</span>

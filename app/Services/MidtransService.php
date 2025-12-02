@@ -592,6 +592,54 @@ class MidtransService
         }
     }
 
+
+/**
+     * Cek transaksi pending yang sudah lewat dari durasi tertentu (auto-check).
+     * Dipanggil via Scheduler/Command.
+     */
+    public function checkPendingTransactions()
+    {
+        Log::info('? Starting scheduled check for pending transactions > 1 hour...');
+
+        // 1. Ambil transaksi yang statusnya PENDING dan dibuat lebih dari 1 jam yang lalu
+        //    Anda bisa sesuaikan subHour() atau subMinutes(60)
+        $pendingTransactions = Transaction::where('status', Transaction::STATUS_PENDING)
+            ->where('created_at', '<=', now()->subMinutes(60)) 
+            ->get();
+
+        $count = 0;
+
+        foreach ($pendingTransactions as $transaction) {
+            try {
+                // 2. Cek status langsung ke API Midtrans
+                $statusResponse = \Midtrans\Transaction::status($transaction->order_id);
+                
+                // 3. Konversi object response Midtrans menjadi array
+                //    agar bisa diterima oleh fungsi handleNotification() Anda
+                $notificationData = json_decode(json_encode($statusResponse), true);
+
+                // 4. Proses update database menggunakan logika yang sudah ada
+                $this->handleNotification($notificationData);
+                
+                $count++;
+                
+                // Beri jeda sedikit agar tidak terkena Rate Limit API Midtrans jika datanya banyak
+                usleep(200000); // 0.2 detik
+
+            } catch (\Exception $e) {
+                // Jika transaksi tidak ditemukan di Midtrans (404), mungkin perlu di-expire manual
+                if (str_contains($e->getMessage(), '404')) {
+                    Log::warning("Transaction {$transaction->order_id} not found in Midtrans, marking as failed locally.");
+                    $transaction->update(['status' => Transaction::STATUS_FAILED]);
+                } else {
+                    Log::error("Failed to auto-check transaction {$transaction->order_id}: " . $e->getMessage());
+                }
+            }
+        }
+
+        Log::info("? Finished scheduled check. Processed {$count} transactions.");
+    }
+
     /**
      * Refund transaction
      */

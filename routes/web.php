@@ -10,7 +10,7 @@ use App\Livewire\Customers\BundlePage;
 use App\Livewire\Customers\TryoutPage;
 use App\Livewire\Admin\DashboardManage;
 use App\Livewire\Customers\PaymentPage;
-use App\Livewire\Customers\BundleDetail; // <-- PASTIKAN INI SUDAH DI-IMPORT
+use App\Livewire\Customers\BundleDetail;
 use App\Livewire\Customers\TryoutDetail;
 use App\Livewire\Customers\MyTryoutsPage;
 use App\Livewire\Admin\Bundles\BundlesEdit;
@@ -19,10 +19,10 @@ use App\Livewire\Customers\TryoutWorksheet;
 use App\Livewire\Customers\TryoutResultPage;
 use App\Livewire\Admin\Bundles\BundlesCreate;
 use App\Livewire\Admin\Bundles\BundlesManage;
-use App\Livewire\Admin\Tryouts\TryoutsCreate; // Hanya perlu satu
+use App\Livewire\Admin\Tryouts\TryoutsCreate;
 use App\Livewire\Admin\Tryouts\TryoutsManage;
 use App\Livewire\Customers\TransactionHistory;
-use App\Livewire\Admin\TransactionsManage;
+use App\Livewire\Admin\TransactionsManage; // <-- Ini adalah kelas lama, TIDAK AKAN DIGUNAKAN
 use App\Livewire\Admin\Question\QuestionManage;
 use App\Livewire\Admin\QuestionCategoriesManage;
 use App\Livewire\Customers\TryoutDiscussionPage;
@@ -33,6 +33,11 @@ use App\Livewire\Customers\TryoutDiscussionWorksheet;
 use App\Livewire\Customers\Dashboard as CustomersDashboard;
 use App\Livewire\Customers\TestimonialPage; 
 
+// [!code ++] IMPORT KOMPONEN TRANSAKSI BARU (nama umum)
+use App\Livewire\Admin\TransactionsIndex;
+use App\Livewire\Admin\TransactionsDetail; 
+// [!code --] use App\Livewire\Admin\TransactionsManage; // Hapus atau biarkan saja (tidak dipakai)
+
 /*
 |--------------------------------------------------------------------------
 | Public Routes
@@ -41,7 +46,7 @@ use App\Livewire\Customers\TestimonialPage;
 Route::get('/', CustomersDashboard::class)->name('customers.dashboard');
 
 // Rute untuk halaman testimoni publik
-Route::get('/testimonials', TestimonialPage::class)->name('testimonials.index'); // <-- TAMBAHKAN INI (2)
+Route::get('/testimonials', TestimonialPage::class)->name('testimonials.index');
 
 /*
 |--------------------------------------------------------------------------
@@ -207,16 +212,21 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
     // Reviews
     Route::get('reviews', ReviewsManage::class)->name('reviews.index');
     
-    // Transaction Management (Dipindahkan ke sini)
+    // Transaction Management BARU
     Route::prefix('transactions')->name('transactions.')->group(function () {
         
-        // [FIX] Mengarahkan ke komponen Livewire TransactionsManage
-        Route::get('/', TransactionsManage::class)->name('index');
+        // [BARU] Halaman Index/Ringkasan (Card View)
+        Route::get('/', TransactionsIndex::class)->name('index'); // Menggunakan TransactionsIndex
 
+        // [BARU] Halaman Detail/Tabel Transaksi spesifik untuk Item
+        // Parameter {type} bisa 'tryout' atau 'bundle', {id} adalah ID item
+        Route::get('/detail/{type}/{id}', TransactionsDetail::class)->name('detail'); // Menggunakan TransactionsDetail
+
+        // Route lama yang mungkin tidak lagi terpakai di komponen baru, tapi tetap dipertahankan
         Route::get('/{id}', function ($id) {
             $transaction = \App\Models\Transaction::with(['user', 'tryout'])->findOrFail($id);
             return view('admin.transactions.detail', compact('transaction'));
-        })->name('detail');
+        })->name('show'); // Ubah nama rute detail lama agar tidak bentrok dengan 'detail' baru
 
         Route::post('/{orderId}/sync', function ($orderId) {
             $midtransService = app(\App\Services\MidtransService::class);

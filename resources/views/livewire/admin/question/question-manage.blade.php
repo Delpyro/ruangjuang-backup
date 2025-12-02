@@ -96,11 +96,13 @@
 
                                     <div>
                                         <label for="id_question_sub_category" class="block text-sm font-medium text-gray-700">Sub Kategori <span class="text-red-500">*</span></label>
-                                        <select wire:model="id_question_sub_category" id="id_question_sub_category" 
+                                        <select wire:model="id_question_sub_category" 
+                                                id="id_question_sub_category" 
+                                                wire:key="subcategory-{{ $id_question_categories }}" {{-- PERBAIKAN UTAMA: Tambahkan wire:key --}}
                                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 @if($this->getFieldError('id_question_sub_category')) border-red-300 @endif"
                                                 {{ $availableSubCategories->isEmpty() ? 'disabled' : '' }}>
                                             <option value="">Pilih Sub Kategori</option>
-                                            @foreach($subCategories as $subCategory)
+                                            @foreach($availableSubCategories as $subCategory)
                                                 <option value="{{ $subCategory->id }}">{{ $subCategory->name }}</option>
                                             @endforeach
                                         </select>
@@ -138,18 +140,16 @@
                                     @endif
                                 </div>
 
-                                {{-- Input Gambar Pertanyaan (Sudah Dihapus) --}}
-
                                 {{-- Pilihan Jawaban --}}
                                 <div>
-                                    {{-- <div class="flex justify-between items-center mb-3">
+                                    <div class="flex justify-between items-center mb-3">
                                         <label class="block text-sm font-medium text-gray-700">Jawaban <span class="text-red-500">*</span></label>
                                         <button type="button" wire:click="addAnswer" 
                                                 class="px-3 py-1 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200 transition-colors"
                                                 {{ count($answers) >= 8 ? 'disabled' : '' }}>
                                             + Tambah Jawaban
                                         </button>
-                                    </div> --}}
+                                    </div>
                                     
                                     @foreach($answers as $index => $answer)
                                         <div class="border rounded-md p-4 mb-3 @if($this->getAnswerFieldError($index, 'answer') || $this->getAnswerFieldError($index, 'points') ) border-red-200 bg-red-50 @else bg-gray-50 @endif" wire:key="answer-{{ $index }}">
@@ -192,11 +192,11 @@
                                                         <div class="md:col-span-2">
                                                             <label class="block text-xs font-medium text-gray-600 mb-1">Poin</label>
                                                             <input type="number" 
-                                                                   wire:model="answers.{{ $index }}.points"
-                                                                   min="0"
-                                                                   max="5"
-                                                                   class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 @if($this->getAnswerFieldError($index, 'points')) border-red-300 @endif"
-                                                                   placeholder="0">
+                                                                    wire:model="answers.{{ $index }}.points"
+                                                                    min="0"
+                                                                    max="5"
+                                                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 @if($this->getAnswerFieldError($index, 'points')) border-red-300 @endif"
+                                                                    placeholder="0">
                                                             @if($this->getAnswerFieldError($index, 'points'))
                                                                 <div class="mt-1 text-red-600 text-sm flex items-center">
                                                                     <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
@@ -210,17 +210,15 @@
                                                                 </div>
                                                             @endif
                                                         </div>
-
-                                                        {{-- Input Gambar Jawaban (Sudah Dihapus) --}}
                                                     </div>
                                                     
                                                     {{-- Opsi Jawaban Benar & Hapus --}}
                                                     <div class="mt-2 flex justify-between items-center">
                                                         <div class="flex items-center">
                                                             <input type="checkbox" 
-                                                                   wire:model="answers.{{ $index }}.is_correct"
-                                                                   wire:click="updateAnswerCorrect({{ $index }})"
-                                                                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                                                    wire:model="answers.{{ $index }}.is_correct"
+                                                                    wire:click="updateAnswerCorrect({{ $index }})"
+                                                                    class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                                                             <span class="ml-2 text-sm text-gray-600">Jawaban Benar</span>
                                                         </div>
                                                         
@@ -314,7 +312,7 @@
                                     @php
                                         $baseClasses = 'w-10 h-10 rounded border transition-colors flex items-center justify-center';
                                         $stateClasses = '';
-            
+                                
                                         if ($i == $currentQuestionNumber) {
                                             // 1. Tombol untuk soal yang sedang aktif (diedit)
                                             $stateClasses = 'bg-blue-600 text-white border-blue-600';
@@ -326,7 +324,7 @@
                                             $stateClasses = 'bg-gray-100 border-gray-300 hover:bg-blue-500 hover:text-white';
                                         }
                                     @endphp
-            
+                                
                                     <button wire:click="navigateToQuestion({{ $questionItem->id }})"
                                             class="{{ $baseClasses }} {{ $stateClasses }}">
                                         {{ $i }}
@@ -682,8 +680,10 @@
         if (explanationEditor && typeof @this !== 'undefined' && typeof @this.get === 'function') {
             explanationEditor.setContent(@this.get('explanation') || '');
         } else if(explanationEditor) {
-             explanationEditor.setContent('');
+            explanationEditor.setContent('');
         }
+        
+        reinitializeAllAnswerEditors();
     });
 
 

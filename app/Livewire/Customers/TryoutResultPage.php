@@ -9,6 +9,7 @@ use App\Models\Review;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Carbon\Carbon; // Pastikan import Carbon
 
 class TryoutResultPage extends Component
 {
@@ -56,8 +57,8 @@ class TryoutResultPage extends Component
 
         // 4. Muat soal (dibutuhkan untuk kalkulasi)
         $this->allTryoutQuestions = $this->tryout->activeQuestions()
-                                            ->with('category')
-                                            ->get();
+                                             ->with('category')
+                                             ->get();
 
         // 5. Logika Gated (Terkunci)
         if ($this->hasReviewed) {
@@ -124,27 +125,25 @@ class TryoutResultPage extends Component
 
 
     /**
-     * [LOGIKA DIPERBAIKI]
      * Logika inti untuk menghitung total skor dan statistik UNTUK SATU PERCOBAAN.
-     * Kini lebih akurat membedakan 'salah' dan 'kosong'.
      */
     private function calculateResultForAttempt(UserTryout $userTryout, EloquentCollection $allTryoutQuestions): array
     {
-        // 1. Load jawaban user, di-indeks berdasarkan 'question_id' untuk pencarian cepat
+        // 1. Load jawaban user
         $userAnswers = UserAnswer::where('user_tryout_id', $userTryout->id)
             ->with(['answer', 'question.category']) 
             ->get()
-            ->keyBy('question_id'); // <-- Optimasi
+            ->keyBy('question_id');
 
         // 2. Siapkan variabel kalkulasi
         $totalQuestions = $allTryoutQuestions->count();
         $correctCount = 0;
-        $wrongCount = 0;     // <-- [BARU] Eksplisit untuk yang dijawab salah
-        $unansweredCount = 0; // <-- [BARU] Eksplisit untuk yang tidak dijawab
+        $wrongCount = 0;    
+        $unansweredCount = 0; 
         $totalScore = 0.0;
         $categorySummary = [];
 
-        // 3. Inisialisasi Kategori (berdasarkan SEMUA soal)
+        // 3. Inisialisasi Kategori
         foreach ($allTryoutQuestions as $question) {
             $categoryId = $question->category->id ?? 0;
             $categoryName = $question->category->name ?? 'Tanpa Kategori';
@@ -154,21 +153,19 @@ class TryoutResultPage extends Component
                     'name' => $categoryName,
                     'total_soal' => 0,
                     'benar' => 0,
-                    'salah' => 0,  // <-- Hanya untuk yg dijawab salah
-                    'kosong' => 0, // <-- Hanya untuk yg tidak dijawab
+                    'salah' => 0,  
+                    'kosong' => 0, 
                     'skor_kategori' => 0.0,
-                    'percentage' => 0, // <-- [BARU] Untuk progress bar
+                    'percentage' => 0,
                 ];
             }
             $categorySummary[$categoryId]['total_soal']++;
         }
 
         // 4. Proses Jawaban
-        // [LOGIKA DIUBAH] Kita loop SEMUA SOAL, bukan hanya jawaban user.
-        // Ini memastikan soal yang tidak dijawab (kosong) terhitung.
         foreach ($allTryoutQuestions as $question) {
             $categoryId = $question->category->id ?? 0;
-            $userAnswer = $userAnswers->get($question->id); // Ambil jawaban by question_id
+            $userAnswer = $userAnswers->get($question->id); 
 
             if ($userAnswer && $userAnswer->answer_id) {
                 // --- KASUS 1: DIJAWAB ---
@@ -180,58 +177,60 @@ class TryoutResultPage extends Component
                     $correctCount++;
                     $categorySummary[$categoryId]['benar']++;
                 } else {
-                    $wrongCount++; // <-- [FIX]
-                    $categorySummary[$categoryId]['salah']++; // <-- [FIX]
+                    $wrongCount++;
+                    $categorySummary[$categoryId]['salah']++; 
                 }
                 $totalScore += $pointsEarned;
                 $categorySummary[$categoryId]['skor_kategori'] += $pointsEarned;
 
             } else {
                 // --- KASUS 2: TIDAK DIJAWAB ---
-                // (baik $userAnswer tidak ada ATAU $userAnswer->answer_id null)
-                $unansweredCount++; // <-- [FIX]
-                $categorySummary[$categoryId]['kosong']++; // <-- [FIX]
+                $unansweredCount++;
+                $categorySummary[$categoryId]['kosong']++; 
             }
         }
         
-        // 5. [BARU] Hitung persentase per kategori (setelah semua dihitung)
-        foreach ($categorySummary as $categoryId => &$summary) { // <-- & (by reference)
+        // 5. Hitung persentase per kategori
+        foreach ($categorySummary as $categoryId => &$summary) {
             $summary['percentage'] = ($summary['total_soal'] > 0) 
                 ? ($summary['benar'] / $summary['total_soal']) * 100 
                 : 0;
         }
-        unset($summary); // Hapus referensi
+        unset($summary);
 
         // 6. Kembalikan hasil kalkulasi
         return [
             'attempt' => $userTryout->attempt,
             'ended_at' => $userTryout->ended_at,
+
+            // [FIX UTAMA] Kita format tanggalnya DI SINI jadi String
+            // View tinggal terima beres, gak perlu mikir konversi lagi.
+            'tanggal_fix' => $userTryout->ended_at 
+                ? Carbon::parse($userTryout->ended_at)
+                    ->setTimezone('Asia/Jakarta')
+                    ->locale('id')
+                    ->isoFormat('LLL') 
+                : '-',
+
             'finalScore' => $totalScore,
             'totalQuestions' => $totalQuestions,
             'totalCorrect' => $correctCount,
-            'totalWrong' => $wrongCount,         // <-- [BARU] Lebih eksplisit
-            'totalUnanswered' => $unansweredCount, // <-- [BARU] Lebih eksplisit
-            'totalAnswered' => $correctCount + $wrongCount, // Kalkulasi yang benar
+            'totalWrong' => $wrongCount,        
+            'totalUnanswered' => $unansweredCount, 
+            'totalAnswered' => $correctCount + $wrongCount,
             'categoryScores' => array_values($categorySummary),
         ];
     }
 
-    /**
-     * Aksi untuk mengarahkan pengguna ke halaman pembahasan.
-     */
     public function goToDiscussion()
     {
         if (!$this->hasReviewed) {
             $this->showReviewModal = true;
             return;
         }
-        
         return $this->redirect(route('tryout.discussion', $this->tryout->slug));
     }
 
-    /**
-     * Render komponen.
-     */
     public function render()
     {
         return view('livewire.customers.tryout-result-page')

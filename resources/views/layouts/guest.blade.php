@@ -34,7 +34,7 @@
                 
                 <div class="relative z-10 flex flex-col justify-center h-full">
                     <div class="mb-6 flex justify-center">
-                        <img src="{{ asset('images/logo.jpg') }}" 
+                        <img src="{{ asset('images/logo.webp') }}" 
                              alt="Logo RuangJuang" 
                              {{ $attributes->merge(['class' => 'h-24 object-contain animate-float']) }}>
                     </div>

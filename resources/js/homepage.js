@@ -61,37 +61,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // FAQ functionality
-    const faqQuestions = document.querySelectorAll('.faq-question');
-    
-    faqQuestions.forEach(question => {
-        question.addEventListener('click', function() {
-            const answer = this.nextElementSibling;
-            const icon = this.querySelector('i');
-            
-            // Toggle current FAQ
-            if (answer.style.maxHeight && answer.style.maxHeight !== '0px') {
-                answer.style.maxHeight = '0';
-                answer.style.marginTop = '0';
-                icon.classList.replace('fa-minus', 'fa-plus');
-            } else {
-                answer.style.maxHeight = answer.scrollHeight + 'px';
-                answer.style.marginTop = '1rem';
-                icon.classList.replace('fa-plus', 'fa-minus');
-            }
-            
-            // Close other FAQs
-            faqQuestions.forEach(otherQuestion => {
-                if (otherQuestion !== question) {
-                    const otherAnswer = otherQuestion.nextElementSibling;
-                    const otherIcon = otherQuestion.querySelector('i');
-                    otherAnswer.style.maxHeight = '0';
-                    otherAnswer.style.marginTop = '0';
-                    otherIcon.classList.replace('fa-minus', 'fa-plus');
-                }
-            });
-        });
-    });
+    // --- BAGIAN FAQ SUDAH DIHAPUS KARENA SUDAH DITANGANI OLEH ALPINE.JS DI BLADE ---
 
     // Smooth scrolling for navigation links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {

@@ -8,13 +8,23 @@ use Livewire\WithPagination;
 use App\Services\MidtransService; 
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
-use Barryvdh\DomPDF\Facade\Pdf; // Import PDF facade
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\Tryout;
+use App\Models\Bundle;
+use Livewire\Attributes\Title;
 
-class TransactionsManage extends Component
+#[Title('Detail Transaksi Item')]
+class TransactionsDetail extends Component // [!PERUBAHAN NAMA KELAS!]
 {
     use WithPagination;
 
     protected $paginationTheme = 'tailwind';
+
+    // --- Properti Item yang Sedang Dilihat ---
+    public $itemId;
+    public $itemType; // 'tryout' atau 'bundle'
+    public $itemTitle;
+    public $itemModel; // Tryout atau Bundle model instance
 
     // --- Properti untuk Modal Detail ---
     public $showModal = false;
@@ -22,15 +32,30 @@ class TransactionsManage extends Component
 
     // --- Properti untuk Filtering & Searching ---
     public $search = '';
-    public $filterStatus = 'all'; // 'all', 'success', 'pending', 'failed'
-    public $filterMonth = 'all';  // Properti untuk filter bulan
+    public $filterStatus = 'all'; 
+    public $filterMonth = 'all'; 
 
-    // Hubungkan ke query string URL
     protected $queryString = [
         'search' => ['except' => ''],
         'filterStatus' => ['except' => 'all', 'as' => 'status'],
         'filterMonth' => ['except' => 'all', 'as' => 'month'],
     ];
+
+    public function mount($id, $type)
+    {
+        $this->itemId = $id;
+        $this->itemType = strtolower($type);
+
+        if ($this->itemType == 'tryout') {
+            $this->itemModel = Tryout::findOrFail($id);
+        } elseif ($this->itemType == 'bundle') {
+            $this->itemModel = Bundle::findOrFail($id);
+        } else {
+            abort(404, 'Tipe item tidak valid.');
+        }
+
+        $this->itemTitle = $this->itemModel->title;
+    }
 
     public function updatedSearch()
     {
@@ -48,12 +73,19 @@ class TransactionsManage extends Component
     }
 
     /**
-     * Membuat Query Builder untuk Transaksi berdasarkan filter saat ini.
+     * Membuat Query Builder untuk Transaksi berdasarkan filter DAN ID ITEM.
      */
     protected function getBaseTransactionsQuery()
     {
+        // Tentukan nama kolom kunci asing yang benar
+        $columnName = $this->itemType == 'tryout' ? 'id_tryout' : 'id_bundle'; 
+
         return Transaction::query()
             ->with(['user:id,name', 'tryout:id,title', 'bundle:id,title'])
+            
+            // Filter permanen berdasarkan ID item menggunakan nama kolom yang benar
+            ->where($columnName, $this->itemId)
+
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {
                     $q->where('order_id', 'like', '%' . $this->search . '%')
@@ -81,18 +113,19 @@ class TransactionsManage extends Component
                     // Abaikan jika formatnya tidak valid
                 }
             })
-            ->orderBy('created_at', 'desc');
+            ->orderBy('created_at', 'desc'); 
     }
 
-    /**
-     * Render komponen.
-     */
     public function render()
     {
+        // Tentukan nama kolom untuk filter bulan
+        $columnName = $this->itemType == 'tryout' ? 'id_tryout' : 'id_bundle';
+
         $transactions = $this->getBaseTransactionsQuery()->paginate(10); 
 
-        // Buat daftar bulan untuk dropdown filter
-        $months = Transaction::select(DB::raw('DATE_FORMAT(created_at, "%Y-%m") as month_year'))
+        // Buat daftar bulan untuk dropdown filter hanya dari transaksi item ini
+        $months = Transaction::where($columnName, $this->itemId) 
+            ->select(DB::raw('DATE_FORMAT(created_at, "%Y-%m") as month_year'))
             ->whereNotNull('created_at')
             ->groupBy('month_year')
             ->orderBy('month_year', 'desc')
@@ -106,22 +139,20 @@ class TransactionsManage extends Component
                 ];
             });
 
-        return view('livewire.admin.transactions-manage', [
+        return view('livewire.admin.transactions-detail', [
             'transactions' => $transactions,
             'months' => $months,
         ])->layout('layouts.admin');
     }
 
-    /**
-     * Mengambil data terfilter dan mengekspornya ke format PDF.
-     */
     public function exportToPdf()
     {
         // 1. Ambil data dengan query yang sama (tanpa pagination)
         $transactions = $this->getBaseTransactionsQuery()->get();
         
-        // 2. Tentukan nama file
-        $fileName = 'transactions_export';
+        // [!code ++] 2. Tentukan nama file secara eksplisit (MEMPERBAIKI UNDEFINED VARIABLE)
+        $fileName = 'transactions_' . $this->itemType . '_' . $this->itemModel->id;
+        
         if ($this->filterStatus !== 'all') {
             $fileName .= '_' . $this->filterStatus;
         }
@@ -129,41 +160,34 @@ class TransactionsManage extends Component
             $fileName .= '_' . $this->filterMonth;
         }
         $fileName .= '_' . Carbon::now()->format('Ymd_His') . '.pdf';
+        // [!code --]
 
         // 3. Muat view yang didedikasikan untuk PDF dengan data transaksi
         $pdf = PDF::loadView('pdf.transactions-report', [
             'transactions' => $transactions,
             'filterStatus' => $this->filterStatus,
             'filterMonth' => $this->filterMonth,
+            'itemTitle' => $this->itemTitle, 
         ]);
 
         // 4. Download PDF
         return response()->streamDownload(function () use ($pdf) {
             echo $pdf->stream();
-        }, $fileName);
+        }, $fileName); // $fileName sekarang terdefinisi
     }
-
-    /**
-     * Membuka modal untuk melihat detail transaksi.
-     */
+    
     public function openModal($id)
     {
         $this->selectedTransaction = Transaction::with(['user', 'tryout', 'bundle'])->find($id);
         $this->showModal = true;
     }
 
-    /**
-     * Menutup modal.
-     */
     public function closeModal()
     {
         $this->showModal = false;
         $this->selectedTransaction = null; 
     }
 
-    /**
-     * Sinkronisasi status transaksi dengan Midtrans.
-     */
     public function syncStatus($orderId, MidtransService $midtransService)
     {
         if (!$orderId) {

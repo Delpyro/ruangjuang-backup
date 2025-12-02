@@ -57,7 +57,8 @@ class QuestionCategoriesManage extends Component
             }, function ($query) {
                 $query->whereNull('deleted_at'); // Hanya tampilkan yang tidak terhapus
             })
-            ->latest()
+            // PERUBAHAN UTAMA: Menggunakan oldest() agar data terlama/tertua (yang pertama kali dibuat) menjadi Nomor 1.
+            ->oldest() 
             ->paginate(10);
 
         return view('livewire.admin.question-categories-manage', [
@@ -103,6 +104,7 @@ class QuestionCategoriesManage extends Component
         $this->resetForm();
         $this->closeModal();
         session()->flash('success', 'Kategori pertanyaan berhasil ditambahkan.');
+        // Tidak perlu resetPage() karena data baru akan muncul di halaman terakhir.
     }
 
     public function edit($id)

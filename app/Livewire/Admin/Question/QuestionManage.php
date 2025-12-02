@@ -9,15 +9,13 @@ use App\Models\QuestionCategory;
 use App\Models\QuestionSubCategory;
 use Livewire\Component;
 use Livewire\WithPagination;
-// [!code --] use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 
 class QuestionManage extends Component
 {
-    // [!code --] use WithPagination, WithFileUploads;
-    use WithPagination; // [!code ++]
+    use WithPagination; 
 
     public $tryoutId;
     public $tryout;
@@ -29,14 +27,12 @@ class QuestionManage extends Component
     public $id_question_sub_category;
     public $question = ''; 
     public $explanation = ''; 
-    // [!code --] public $questionImage;
     public $is_active = true;
     public $isEdit = false;
     public $showModal = false;
     
     // Answers properties
     public $answers = [];
-    // [!code --] public $answerImages = [];
     
     // Navigation properties
     public $questionsList = [];
@@ -62,12 +58,10 @@ class QuestionManage extends Component
             'id_question_sub_category' => 'required|exists:question_sub_categories,id',
             'question' => 'required|string|min:5', 
             'explanation' => 'required|string|min:5',
-            // [!code --] 'questionImage' => 'nullable|image|max:2048', 
             'is_active' => 'boolean',
             'answers.*.answer' => 'required|string|max:5000', 
             'answers.*.is_correct' => 'boolean',
             'answers.*.points' => 'integer|min:0|max:5',
-            // [!code --] 'answerImages.*' => 'nullable|image|max:1024',
         ];
     }
 
@@ -83,10 +77,6 @@ class QuestionManage extends Component
         'answers.*.points.integer' => 'Poin :position harus berupa angka.',
         'answers.*.points.min' => 'Poin :position minimal 0.',
         'answers.*.points.max' => 'Poin :position maksimal 5.',
-        // [!code --] 'questionImage.image' => 'File harus berupa gambar.',
-        // [!code --] 'questionImage.max' => 'Gambar pertanyaan maksimal 2MB.',
-        // [!code --] 'answerImages.*.image' => 'File gambar jawaban :position harus berupa gambar.',
-        // [!code --] 'answerImages.*.max' => 'Gambar jawaban :position maksimal 1MB.',
     ];
 
     protected $validationAttributes = [
@@ -101,14 +91,6 @@ class QuestionManage extends Component
         'answers.5.answer' => 'jawaban F',
         'answers.6.answer' => 'jawaban G',
         'answers.7.answer' => 'jawaban H',
-        // [!code --] 'answerImages.0' => 'gambar jawaban A',
-        // [!code --] 'answerImages.1' => 'gambar jawaban B',
-        // [!code --] 'answerImages.2' => 'gambar jawaban C',
-        // [!code --] 'answerImages.3' => 'gambar jawaban D',
-        // [!code --] 'answerImages.4' => 'gambar jawaban E',
-        // [!code --] 'answerImages.5' => 'gambar jawaban F',
-        // [!code --] 'answerImages.6' => 'gambar jawaban G',
-        // [!code --] 'answerImages.7' => 'gambar jawaban H',
     ];
 
     public function mount($tryoutId)
@@ -146,13 +128,11 @@ class QuestionManage extends Component
         $this->resetFieldErrors();
         
         try {
-            // [!code --] if (in_array($propertyName, ['question', 'explanation', 'id_question_categories', 'id_question_sub_category', 'questionImage'])) {
-            if (in_array($propertyName, ['question', 'explanation', 'id_question_categories', 'id_question_sub_category'])) { // [!code ++]
+            if (in_array($propertyName, ['question', 'explanation', 'id_question_categories', 'id_question_sub_category'])) { 
                 $this->validateOnly($propertyName);
             }
             
-            // [!code --] if (str_contains($propertyName, 'answers.') || str_contains($propertyName, 'answerImages.')) {
-            if (str_contains($propertyName, 'answers.')) { // [!code ++]
+            if (str_contains($propertyName, 'answers.')) { 
                 $this->validateOnly($propertyName);
             }
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -175,6 +155,7 @@ class QuestionManage extends Component
             $this->availableSubCategories = collect();
         }
         
+        // Pastikan sub kategori yang dipilih masih ada setelah loading
         if ($this->id_question_sub_category && !$this->availableSubCategories->contains('id', $this->id_question_sub_category)) {
             $this->id_question_sub_category = null;
         }
@@ -190,7 +171,7 @@ class QuestionManage extends Component
     {
         $this->questionsList = Question::where('id_tryout', $this->tryoutId)
             ->orderBy('id')
-            ->get(['id', 'question', 'is_active']); // [!code ++]        
+            ->get(['id', 'question', 'is_active']); //        
         
             $this->totalQuestions = $this->questionsList->count();
         
@@ -230,11 +211,6 @@ class QuestionManage extends Component
             unset($this->answers[$index]);
             $this->answers = array_values($this->answers);
             
-            // [!code --] if (isset($this->answerImages[$index])) {
-            // [!code --]     unset($this->answerImages[$index]);
-            // [!code --]     $this->answerImages = array_values($this->answerImages);
-            // [!code --] }
-            
             $this->resetAnswerErrors();
             $this->resetFieldErrors();
             
@@ -245,7 +221,8 @@ class QuestionManage extends Component
     public function navigateToQuestion($questionId)
     {
         $this->resetForm();
-        $this->edit($questionId);
+        // edit() sudah memuat sub kategori
+        $this->edit($questionId); 
         
         $index = $this->questionsList->search(fn($item) => $item->id == $questionId);
         
@@ -254,7 +231,6 @@ class QuestionManage extends Component
         }
         
         $this->isEdit = true;
-        $this->loadAvailableSubCategories();
         $this->resetFieldErrors();
 
         $this->dispatch('question-loaded');
@@ -317,8 +293,7 @@ class QuestionManage extends Component
     {
         $this->showModal = false;
         $this->resetErrorBag();
-        // [!code --] $this->reset(['questionImage', 'answerImages', 'hasAnswerErrors', 'answerErrorMessages']);
-        $this->reset(['hasAnswerErrors', 'answerErrorMessages']); // [!code ++]
+        $this->reset(['hasAnswerErrors', 'answerErrorMessages']); 
         $this->loadQuestionsNavigation();
         $this->resetFieldErrors();
     }
@@ -332,8 +307,6 @@ class QuestionManage extends Component
         $this->resetErrorBag();
         $this->initializeAnswers();
         $this->is_active = true;
-        // [!code --] $this->questionImage = null;
-        // [!code --] $this->answerImages = [];
         $this->isEdit = false;
         $this->resetAnswerErrors();
         $this->resetFieldErrors();
@@ -345,40 +318,30 @@ class QuestionManage extends Component
         $this->answerErrorMessages = [];
     }
 
-    // ==========================================================
-    // PERBAIKAN UTAMA: Method 'save' diubah untuk refresh halaman
-    // ==========================================================
     public function save()
     {
         if ($this->isEdit) {
             // --- LOGIKA UPDATE ---
-            $success = $this->update(); // Panggil update()
+            $success = $this->update(); 
 
             if ($success) {
-                // Berhasil update, siapkan form untuk soal baru
                 session()->flash('success', 'Question berhasil diperbarui.');
-                return redirect(request()->header('Referer')); // Lakukan full page refresh
+                return redirect(request()->header('Referer')); 
             }
             
         } else {
             // --- LOGIKA CREATE ---
-            $success = $this->create(); // Panggil create()
+            $success = $this->create(); 
 
             if ($success) {
-                // Berhasil create, siapkan form untuk soal baru
                 session()->flash('success', 'Question berhasil ditambahkan.');
-                return redirect(request()->header('Referer')); // Lakukan full page refresh
+                return redirect(request()->header('Referer')); 
             }
         }
         
         return null;
     }
 
-
-    // ==========================================================
-    // METHOD 'create' DIPERBARUI
-    // Hanya me-return true/false, navigasi ditangani 'save'
-    // ==========================================================
     public function create()
     {
         try {
@@ -389,31 +352,19 @@ class QuestionManage extends Component
             $this->validate();
             $this->validateAnswers();
 
-            // [!code --] $questionImagePath = null;
-            // [!code --] if ($this->questionImage) {
-            // [!code --]     $questionImagePath = $this->questionImage->store('questions', 'public');
-            // [!code --] }
-
             $question = Question::create([
                 'id_tryout' => $this->tryoutId,
                 'id_question_categories' => $this->id_question_categories,
                 'id_question_sub_category' => $this->id_question_sub_category,
                 'question' => $this->question,
                 'explanation' => $this->explanation,
-                // [!code --] 'image' => $questionImagePath,
                 'is_active' => $this->is_active,
             ]);
 
             foreach ($this->answers as $index => $answerData) {
-                // [!code --] $answerImagePath = null;
-                // [!code --] if (isset($this->answerImages[$index]) && $this->answerImages[$index]) {
-                // [!code --]     $answerImagePath = $this->answerImages[$index]->store('answers', 'public');
-                // [!code --] }
-
                 Answer::create([
                     'id_question' => $question->id,
                     'answer' => $answerData['answer'],
-                    // [!code --] 'image' => $answerImagePath,
                     'is_correct' => $answerData['is_correct'],
                     'points' => $answerData['points'] ?: 0,
                 ]);
@@ -440,7 +391,7 @@ class QuestionManage extends Component
         $question = Question::with('answers')->findOrFail($id);
         $this->questionId = $id;
         $this->id_question_categories = $question->id_question_categories;
-        $this->id_question_sub_category = $question->id_question_sub_category;
+        $this->id_question_sub_category = $question->id_question_sub_category; // Set Sub Kategori
         $this->question = $question->question; 
         $this->explanation = $question->explanation; 
         $this->is_active = $question->is_active;
@@ -462,13 +413,13 @@ class QuestionManage extends Component
         $this->resetAnswerErrors();
         $this->resetFieldErrors();
         
+        // Memuat Sub Kategori agar `$availableSubCategories` terisi.
+        // Ini HARUS dipanggil setelah $id_question_categories diisi.
+        $this->loadAvailableSubCategories(); 
+
         $this->dispatch('init-answers'); 
     }
 
-    // ==========================================================
-    // METHOD 'update' DIPERBARUI
-    // Hanya me-return true/false, navigasi ditangani 'save'
-    // ==========================================================
     public function update()
     {
         try {
@@ -481,41 +432,21 @@ class QuestionManage extends Component
 
             $question = Question::findOrFail($this->questionId);
 
-            // [!code --] $questionImagePath = $question->image;
-            // [!code --] if ($this->questionImage) {
-            // [!code --]     if ($questionImagePath) {
-            // [!code --]         Storage::disk('public')->delete($questionImagePath);
-            // [!code --]     }
-            // [!code --]     $questionImagePath = $this->questionImage->store('questions', 'public');
-            // [!code --] }
-
             $question->update([
                 'id_question_categories' => $this->id_question_categories,
                 'id_question_sub_category' => $this->id_question_sub_category,
                 'question' => $this->question,
                 'explanation' => $this->explanation,
-                // [!code --] 'image' => $questionImagePath,
                 'is_active' => $this->is_active,
             ]);
 
-            foreach ($question->answers as $oldAnswer) {
-                // [!code --] if ($oldAnswer->image) {
-                // [!code --]     Storage::disk('public')->delete($oldAnswer->image);
-                // [!code --] }
-                $oldAnswer->delete();
-            }
+            // Hapus jawaban lama dan buat yang baru
+            $question->answers()->delete();
             
             foreach ($this->answers as $index => $answerData) {
-                // [!code --] $answerImagePath = null;
-                
-                // [!code --] if (isset($this->answerImages[$index]) && $this->answerImages[$index]) {
-                // [!code --]     $answerImagePath = $this->answerImages[$index]->store('answers', 'public');
-                // [!code --] }
-
                 Answer::create([
                     'id_question' => $question->id,
                     'answer' => $answerData['answer'],
-                    // [!code --] 'image' => $answerImagePath,
                     'is_correct' => $answerData['is_correct'],
                     'points' => $answerData['points'] ?: 0,
                 ]);
@@ -523,17 +454,17 @@ class QuestionManage extends Component
 
             $this->loadQuestionsNavigation();
             
-            return true; // Kembalikan status sukses
+            return true; 
             
         } catch (\Illuminate\Validation\ValidationException $e) {
             $this->handleValidationErrors($e->errors());
             session()->flash('error', 'Terdapat kesalahan dalam pengisian form. Silakan periksa kembali.');
-            return false; // Kembalikan status gagal
+            return false; 
         } catch (\Exception $e) {
             $this->hasAnswerErrors = true;
             $this->answerErrorMessages[] = $e->getMessage();
             session()->flash('error', 'Gagal memperbarui question: ' . $e->getMessage());
-            return false; // Kembalikan status gagal
+            return false; 
         }
     }
 
@@ -569,8 +500,7 @@ class QuestionManage extends Component
         $this->answerErrorMessages = []; 
 
         foreach ($errors as $field => $messages) {
-            // [!code --] if (str_contains($field, 'answers.') || str_contains($field, 'answerImages.')) {
-            if (str_contains($field, 'answers.')) { // [!code ++]
+            if (str_contains($field, 'answers.')) { 
                 $this->answerFieldErrors[$field] = $messages[0];
                 $this->hasAnswerErrors = true; 
                 
@@ -592,17 +522,6 @@ class QuestionManage extends Component
     {
         try {
             $question = Question::findOrFail($id);
-            
-            // [!code --] if ($question->image) {
-            // [!code --]     Storage::disk('public')->delete($question->image);
-            // [!code --] }
-            
-            // [!code --] foreach ($question->answers as $answer) {
-            // [!code --]     if ($answer->image) {
-            // [!code --]         Storage::disk('public')->delete($answer->image);
-            // [!code --]     }
-            // [!code --] }
-            
             $question->delete(); 
             
             $this->loadQuestionsNavigation();
@@ -648,21 +567,6 @@ class QuestionManage extends Component
         return $letters[$index] ?? chr(65 + $index);
     }
 
-    // [!code --] public function removeQuestionImage()
-    // [!code --] {
-    // [!code --]     $this->questionImage = null;
-    // [!code --]     $this->resetFieldErrors();
-    // [!code --] }
-    // [!code --] 
-    // [!code --] public function removeAnswerImage($index)
-    // [!code --] {
-    // [!code --]     if (isset($this->answerImages[$index])) {
-    // [!code --]         unset($this->answerImages[$index]);
-    // [!code --]         $this->answerImages = array_values($this->answerImages);
-    // [!code --]         $this->resetFieldErrors();
-    // [!code --]     }
-    // [!code --] }
-
     public function updatingSearch()
     {
         $this->resetPage();
@@ -688,10 +592,4 @@ class QuestionManage extends Component
         $fieldName = "answers.{$answerIndex}.{$field}";
         return $this->answerFieldErrors[$fieldName] ?? $this->getErrorBag()->first($fieldName);
     }
-
-    // [!code --] public function getAnswerImageError($answerIndex)
-    // [!code --] {
-    // [!code --]     $fieldName = "answerImages.{$answerIndex}";
-    // [!code --]     return $this->answerFieldErrors[$fieldName] ?? $this->getErrorBag()->first($fieldName);
-    // [!code --] }
 }

@@ -98,13 +98,11 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse ($categories as $index => $category)
                         <tr class="hover:bg-gray-50 transition-colors duration-150 {{ $category->trashed() ? 'bg-red-50' : '' }}">
+                            {{-- PENOMORAN DEFAULT: Data terlama/tertua (index 0 di halaman 1) akan menjadi Nomor 1 --}}
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ ($categories->currentPage() - 1) * $categories->perPage() + $index + 1 }}</td>
+                            
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="flex items-center">
-                                    {{-- BLOK ICON DIHILANGKAN SESUAI PERMINTAAN ANDA --}}
-                                    {{-- <div class="w-8 h-8 rounded-full {{ $category->trashed() ? 'bg-red-100' : 'bg-blue-100' }} flex items-center justify-center mr-3">
-                                        <i class="fa-solid fa-list w-4 h-4 {{ $category->trashed() ? 'text-red-600' : 'text-blue-600' }}"></i>
-                                    </div> --}}
                                     <span class="font-medium text-sm {{ $category->trashed() ? 'text-gray-400' : 'text-gray-900' }}">{{ $category->name }}</span>
                                     @if($category->trashed())
                                         <span class="ml-2 px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full">Terhapus</span>
@@ -204,19 +202,19 @@
         </div>
     </div>
 
-    {{-- Modal Overlay --}}
+    {{-- Modal Overlay (Create/Edit) --}}
     @if($showModal)
         <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center" aria-labelledby="modal-title" role="dialog" aria-modal="true">
             <div class="fixed inset-0 bg-gray-500 bg-opacity-20 transition-opacity backdrop-blur-sm" aria-hidden="true"></div>
 
             <div class="flex items-center justify-center min-h-screen p-4 w-xl m-auto">
                 <div class="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-auto
-                                 max-h-[90vh] overflow-y-auto transform transition-all">
+                                     max-h-[90vh] overflow-y-auto transform transition-all">
 
                     {{-- Tombol close --}}
                     <button wire:click="closeModal"
                         class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors duration-200
-                                 bg-gray-100 hover:bg-gray-200 rounded-full p-1">
+                                     bg-gray-100 hover:bg-gray-200 rounded-full p-1">
                         {{-- Font Awesome: fa-xmark --}}
                         <i class="fa-solid fa-xmark w-5 h-5"></i>
                     </button>
@@ -271,7 +269,7 @@
         </div>
     @endif
 
-    {{-- Konfirmasi Delete Overlay --}}
+    {{-- Konfirmasi Delete Overlay (Soft Delete) --}}
     @if($confirmingDeletion)
         <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="delete-confirmation-title" role="dialog" aria-modal="true">
             <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" aria-hidden="true"></div>
@@ -300,7 +298,7 @@
         </div>
     @endif
 
-    {{-- Konfirmasi Force Delete Overlay --}}
+    {{-- Konfirmasi Force Delete Overlay (Hapus Permanen) --}}
     @if($confirmingForceDelete)
         <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="force-delete-confirmation-title" role="dialog" aria-modal="true">
             <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" aria-hidden="true"></div>

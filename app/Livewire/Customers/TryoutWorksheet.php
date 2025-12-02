@@ -7,11 +7,10 @@ use App\Models\UserTryout;
 use App\Models\UserAnswer;
 use App\Models\Question;
 use App\Models\Ranking; 
-use App\Models\TryoutCategoryScore; // <-- [BARU] Import model Rapor
+use App\Models\TryoutCategoryScore; 
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 use Carbon\Carbon;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\On;
 
@@ -42,7 +41,7 @@ class TryoutWorksheet extends Component
 
     
     // ----------------------------------------------------------------------
-    // INIT & SETUP (Tidak ada perubahan di sini)
+    // INIT & SETUP 
     // ----------------------------------------------------------------------
 
     /**
@@ -75,8 +74,9 @@ class TryoutWorksheet extends Component
 
         $this->userTryout = $userTryout;
         
+        // Cek apakah waktu sudah habis secara real-time
         if (Carbon::now()->isAfter($userTryout->ended_at)) {
-            $this->forceFinishExam($userTryout); // Ini akan menjalankan logika ranking & rapor jika attempt 1
+            $this->forceFinishExam($userTryout); 
             session()->flash('error', 'Waktu pengerjaan tryout ini sudah habis. Jawaban Anda disimpan dan dinilai.');
             return $this->redirect(route('tryout.my-results', $this->tryout->slug));
         }
@@ -101,8 +101,8 @@ class TryoutWorksheet extends Component
     private function loadQuestions(): bool
     {
         $questionModels = $this->tryout->activeQuestions() 
-                                     ->select('id') 
-                                     ->get();
+                                    ->select('id') 
+                                    ->get();
         
         $this->questionIds = $questionModels->pluck('id')->toArray();
         $this->totalQuestions = count($this->questionIds);
@@ -146,8 +146,8 @@ class TryoutWorksheet extends Component
             return;
         }
 
-        $this->currentQuestion = Question::with('answers')->find($questionId);
-
+        $this->currentQuestion = Question::with(['answers', 'subCategory'])->find($questionId);
+        
         if (! $this->currentQuestion) {
             session()->flash('error', 'Gagal memuat soal. Silakan muat ulang halaman.');
             return;
@@ -165,7 +165,7 @@ class TryoutWorksheet extends Component
     }
 
     // ----------------------------------------------------------------------
-    // ACTION METHODS (Tidak ada perubahan di sini)
+    // ACTION METHODS 
     // ----------------------------------------------------------------------
 
     public function saveAnswer()
@@ -267,7 +267,7 @@ class TryoutWorksheet extends Component
     }
     
     // ----------------------------------------------------------------------
-    // HOOKS (Tidak ada perubahan di sini)
+    // HOOKS 
     // ----------------------------------------------------------------------
 
     public function updatedIsDoubtful($value)
@@ -284,7 +284,7 @@ class TryoutWorksheet extends Component
     }
 
     // ----------------------------------------------------------------------
-    // HELPERS
+    // HELPERS 
     // ----------------------------------------------------------------------
 
     private function updateProgress()
@@ -302,37 +302,41 @@ class TryoutWorksheet extends Component
     }
     
     /**
-     * [LOGIKA DIPERBARUI]
+     * [LOGIKA DIPERBAIKI - FIX BUG WAKTU]
      * Helper untuk menandai tryout selesai + MENYIMPAN RANKING + MENYIMPAN RAPOR.
      */
     private function forceFinishExam(UserTryout $userTryout)
     {
         // 1. Tandai ujian sebagai selesai
         $userTryout->is_completed = true;
-        if (!$userTryout->ended_at) {
-            $userTryout->ended_at = Carbon::now(); 
-        }
+        
+        // [PERBAIKAN UTAMA DI SINI]
+        // Kita HAPUS pengecekan if(!$userTryout->ended_at)
+        // Kita paksa 'ended_at' diupdate menjadi WAKTU SEKARANG (Realtime)
+        // Agar menimpa waktu deadline yang tersimpan sebelumnya.
+        $userTryout->ended_at = Carbon::now(); 
+
         $userTryout->save();
 
         //
-        // --- [ LOGIKA RANKING & RAPOR BARU DITEMPATKAN DI SINI ] ---
+        // --- LOGIKA RANKING & RAPOR ---
         //
         
         // 2. Cek apakah ini PERCOBAAN PERTAMA.
         if ($userTryout->attempt == 1) {
             
-            // --- [BARU] Logika Kalkulasi Lengkap ---
+            // --- Logika Kalkulasi Lengkap ---
             
             // Ambil semua soal aktif untuk tryout ini, lengkap dengan info kategori
             $allTryoutQuestions = $this->tryout->activeQuestions()
-                                    ->with('category')
-                                    ->get();
+                                             ->with('category')
+                                             ->get();
             
             // Ambil semua jawaban user untuk pengerjaan ini
             $userAnswers = UserAnswer::where('user_tryout_id', $userTryout->id)
-                                ->with(['answer', 'question.category']) 
-                                ->get()
-                                ->keyBy('question_id');
+                                     ->with(['answer', 'question.category']) 
+                                     ->get()
+                                     ->keyBy('question_id');
 
             $categorySummary = [];
             $totalScore = 0.0;
@@ -342,7 +346,7 @@ class TryoutWorksheet extends Component
                 $categoryId = $question->category->id ?? 0;
                 if (!isset($categorySummary[$categoryId])) {
                     $categorySummary[$categoryId] = [
-                        'category_id' => $categoryId, // Simpan ID untuk relasi
+                        'category_id' => $categoryId, 
                         'total_soal' => 0,
                         'skor_kategori' => 0.0,
                         'benar' => 0,
@@ -353,7 +357,7 @@ class TryoutWorksheet extends Component
                 $categorySummary[$categoryId]['total_soal']++;
             }
 
-            // Proses Jawaban (Loop berdasarkan SEMUA soal, bukan jawaban user)
+            // Proses Jawaban
             foreach ($allTryoutQuestions as $question) {
                 $categoryId = $question->category->id ?? 0;
                 $userAnswer = $userAnswers->get($question->id);
@@ -361,7 +365,7 @@ class TryoutWorksheet extends Component
                 if ($userAnswer && $userAnswer->answer_id) {
                     // --- KASUS 1: DIJAWAB ---
                     $selectedAnswerModel = $userAnswer->answer;
-                    $pointsEarned = $userAnswer->score ?? 0; // Ambil skor yg sudah disimpan
+                    $pointsEarned = $userAnswer->score ?? 0;
                     $isCorrect = $selectedAnswerModel ? $selectedAnswerModel->is_correct : false;
 
                     if ($isCorrect) {
@@ -379,18 +383,18 @@ class TryoutWorksheet extends Component
             }
             // --- Akhir Logika Kalkulasi ---
 
-            // 3. Simpan Skor Total ke tabel Ranking (Gunakan updateOrCreate)
+            // 3. Simpan Skor Total ke tabel Ranking
             Ranking::updateOrCreate(
                 [
                     'id_user'   => $userTryout->id_user,
                     'tryout_id' => $userTryout->tryout_id,
                 ],
                 [
-                    'score'     => $totalScore // Gunakan total skor yang baru dihitung
+                    'score'     => $totalScore 
                 ]
             );
 
-            // 4. [BARU] Simpan Skor Detail per Kategori ke tabel Rapor
+            // 4. Simpan Skor Detail per Kategori ke tabel Rapor
             foreach ($categorySummary as $stat) {
                 TryoutCategoryScore::updateOrCreate(
                     [
@@ -410,7 +414,7 @@ class TryoutWorksheet extends Component
     }
     
     // =========================================================
-    // CSS STATUS NAVIGASI (Tidak ada perubahan di sini)
+    // CSS STATUS NAVIGASI
     // =========================================================
     public function getQuestionStatusClass($index): string
     {

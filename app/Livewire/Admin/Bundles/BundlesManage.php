@@ -44,7 +44,8 @@ class BundlesManage extends Component
     {
         $query = Bundle::query()
             ->withCount('tryouts') // Hitung jumlah tryout di setiap bundle
-            ->orderBy('created_at', 'desc');
+            // PERUBAHAN: Menggunakan asc (ascending) agar data terlama/tertua menjadi Nomor 1.
+            ->orderBy('created_at', 'asc');
 
         // Logic Pencarian
         if ($this->search) {

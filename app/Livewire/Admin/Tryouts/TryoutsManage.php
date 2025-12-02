@@ -65,14 +65,15 @@ class TryoutsManage extends Component
     {
         $tryouts = Tryout::when($this->search, function ($query) {
                 $query->where('title', 'like', '%' . $this->search . '%')
-                      ->orWhere('slug', 'like', '%' . $this->search . '%');
+                    ->orWhere('slug', 'like', '%' . $this->search . '%');
             })
             ->when($this->showTrashed, function ($query) {
                 $query->onlyTrashed();
             }, function ($query) {
                 $query->whereNull('deleted_at');
             })
-            ->latest()
+            // PERUBAHAN: Menggunakan oldest() agar data terlama/tertua menjadi Nomor 1 (di urutan teratas).
+            ->oldest() 
             ->paginate(10);
 
         return view('livewire.admin.tryouts.tryouts-manage', [

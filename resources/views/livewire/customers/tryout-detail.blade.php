@@ -1,6 +1,7 @@
 <div class="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-12 mt-24">
     <div class="container mx-auto px-4">
         
+        {{-- HEADER: JUDUL & DESKRIPSI --}}
         <div class="text-center mb-16">
             <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-4 leading-tight">{{ $data->title }}</h1>
             <p class="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
@@ -10,14 +11,17 @@
 
         <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
             
+            {{-- KOLOM KIRI: KONTEN UTAMA --}}
             <div class="lg:col-span-2 bg-white rounded-2xl shadow-2xl hover:shadow-2xl transition-all duration-500 p-8 order-2 lg:order-1 border border-gray-100">
                 
+                {{-- STATISTIK RINGKAS --}}
                 <h3 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
                     <span class="bg-gradient-to-r from-primary to-blue-600 w-3 h-8 rounded-full mr-3"></span>
                     Ringkasan Utama
                 </h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
                     
+                    {{-- Total Soal --}}
                     <div class="relative overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                         <div class="absolute top-0 right-0 w-20 h-20 bg-blue-200 rounded-full -mr-6 -mt-6 opacity-20"></div>
                         <div class="flex items-start">
@@ -33,6 +37,7 @@
                         </div>
                     </div>
 
+                    {{-- Durasi --}}
                     <div class="relative overflow-hidden bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-2xl border border-purple-100 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                         <div class="absolute top-0 right-0 w-20 h-20 bg-purple-200 rounded-full -mr-6 -mt-6 opacity-20"></div>
                         <div class="flex items-start">
@@ -49,6 +54,7 @@
                     </div>
                 </div>
 
+                {{-- DESKRIPSI KONTEN --}}
                 <h3 class="text-2xl font-bold text-gray-800 mb-6 flex items-center pt-8 border-t border-gray-200">
                     <span class="bg-gradient-to-r from-primary to-blue-600 w-3 h-8 rounded-full mr-3"></span>
                     Fasilitas yang Didapatkan
@@ -57,6 +63,7 @@
                     {!! $data->content !!}
                 </div>
                 
+                {{-- QUOTES --}}
                 @if(!empty($data->quote))
                     <div class="relative bg-gradient-to-r from-yellow-50 to-amber-50 p-8 rounded-2xl shadow-lg border border-yellow-200 mb-8 overflow-hidden">
                         <div class="absolute top-0 right-0 w-32 h-32 bg-yellow-200 rounded-full -mr-10 -mt-10 opacity-20"></div>
@@ -66,16 +73,15 @@
                         
                         <div class="relative z-10 ml-12">
                             <p class="font-bold text-lg text-amber-800 mb-3">Quotes Motivasi:</p>
-                            
                             <div class="mt-1 max-w-none text-base italic text-amber-900 leading-relaxed"> 
                                 {!! $data->quote !!}
                             </div>
                         </div>
-                        
                         <i class="fas fa-quote-right absolute bottom-6 right-6 text-yellow-300 text-4xl opacity-50 z-0"></i>
                     </div>
                 @endif
                 
+                {{-- SECTION PERINGKAT / LEADERBOARD --}}
                 <div class="pt-8 border-t border-gray-200 mt-10">
                     <h3 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
                         <i class="fas fa-trophy text-yellow-500 mr-3 text-xl"></i>
@@ -106,25 +112,43 @@
                             @endforeach
                         </ol>
 
+                        {{-- PERINGKAT USER SAAT INI (SUDAH DIPERBAIKI) --}}
                         @if($userRanking)
-                            <div class="mt-5 pt-5 border-t border-dashed border-gray-300">
+                            <div class="mt-8 pt-6 border-t border-dashed border-gray-300">
                                 <p class="text-sm font-semibold text-gray-700 mb-3 ml-1">Peringkat Anda Saat Ini:</p>
-                                <div class="flex items-center justify-between bg-gradient-to-r from-blue-100 to-indigo-100 p-4 rounded-xl border border-blue-300 shadow-md">
-                                    <div class="flex items-center">
-                                        <span class="w-10 text-center">
-                                            <i class="fas fa-user-circle text-blue-600 text-3xl" title="Peringkat Anda"></i>
-                                        </span>
+                                
+                                {{-- Card Peringkat User --}}
+                                <div class="flex items-center justify-between bg-gradient-to-r from-blue-600 to-indigo-700 p-5 rounded-xl shadow-lg text-white transform hover:scale-[1.01] transition-transform duration-300 relative overflow-hidden">
+                                    
+                                    {{-- Background Decor --}}
+                                    <div class="absolute top-0 right-0 w-24 h-24 bg-white opacity-10 rounded-full -mr-8 -mt-8"></div>
+                                    
+                                    <div class="flex items-center relative z-10">
+                                        {{-- Badge Angka Peringkat --}}
+                                        <div class="w-14 h-14 flex flex-col items-center justify-center bg-white text-blue-700 rounded-full font-bold shadow-md border-4 border-blue-300">
+                                            {{-- <span class="text-[10px] leading-none text-gray-400 uppercase font-bold tracking-tighter">POSISI</span> --}}
+                                            <span class="text-2xl leading-none font-extrabold">{{ $userRankPosition ?? '-' }}</span>
+                                        </div>
                                         
-                                        <div class="ml-4">
-                                            <span class="font-semibold text-gray-900 block">{{ $userRanking->user->name ?? 'Anda' }}</span>
-                                            <span class="text-sm text-gray-500">Skor: <strong class="text-blue-600">{{ number_format($userRanking->score, 0, ',', '.') }}</strong></span>
+                                        <div class="ml-5">
+                                            <span class="font-bold text-lg block tracking-wide">{{ $userRanking->user->name ?? 'Anda' }}</span>
+                                            <div class="flex items-center mt-1">
+                                                {{-- <i class="fas fa-star text-yellow-400 text-sm mr-2"></i> --}}
+                                                <span class="text-blue-100 text-sm">Skor Perolehan: <strong class="text-white text-base ml-1">{{ number_format($userRanking->score, 0, ',', '.') }}</strong></span>
+                                            </div>
                                         </div>
                                     </div>
+                                    
+                                    {{-- Ikon Grafik di Kanan --}}
+                                    {{-- <div class="hidden md:block text-right opacity-80 relative z-10">
+                                        <i class="fas fa-chart-line text-4xl text-blue-300"></i>
+                                    </div> --}}
                                 </div>
                             </div>
                         @endif
 
                     @else
+                        {{-- Jika Belum Ada Ranking Sama Sekali --}}
                         <div class="text-center bg-gray-50 p-6 rounded-xl border border-gray-100">
                             <i class="fas fa-info-circle text-gray-400 text-3xl mb-3"></i>
                             <p class="text-gray-600">Belum ada peringkat untuk tryout ini.</p>
@@ -132,11 +156,7 @@
                     @endif
                 </div>
 
-                {{-- 
-                  👇👇 [PERBAIKAN DI SINI] 👇👇
-                  Menambahkan x-data dan event listener @review-page-changed.window
-                  untuk mendeteksi sinyal dari server dan menjalankan scroll.
-                --}}
+                {{-- SECTION REVIEW / ULASAN --}}
                 <div 
                     class="pt-8 border-t border-gray-200 mt-10"
                     x-data
@@ -148,6 +168,7 @@
                     </h3>
 
                     @if($reviews->isNotEmpty())
+                        {{-- Summary Rating --}}
                         <div class="bg-blue-50 p-6 rounded-2xl border border-blue-100 mb-8 flex flex-col md:flex-row items-center gap-4">
                             <div class="text-center">
                                 <span class="text-5xl font-extrabold text-blue-700">{{ number_format($averageRating, 1) }}</span>
@@ -163,6 +184,7 @@
                             </div>
                         </div>
 
+                        {{-- List Review --}}
                         <div class="space-y-6">
                             @foreach ($reviews as $review)
                                 <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
@@ -180,7 +202,7 @@
                             @endforeach
                         </div>
 
-                        {{-- Link Pagination untuk Review --}}
+                        {{-- Pagination --}}
                         <div class="mt-8">
                             {{ $reviews->links() }}
                         </div>
@@ -192,8 +214,9 @@
                         </div>
                     @endif
                 </div>
-                </div>
+            </div>
             
+            {{-- KOLOM KANAN: STICKY SIDEBAR (TOMBOL AKSI) --}}
             <div class="lg:col-span-1 p-0 order-1 lg:order-2 sticky top-24 self-start">
                 
                 <div class="bg-gradient-to-b from-white to-blue-50 rounded-2xl shadow-2xl p-8 border border-gray-200 transition-all duration-500 hover:shadow-2xl relative overflow-hidden">
@@ -201,6 +224,7 @@
                     
                     <h3 class="text-2xl font-bold text-gray-900 mb-6 relative z-10">Siap untuk Berjuang?</h3>
 
+                    {{-- Harga --}}
                     <div class="text-left mb-6 border-b pb-4 relative z-10">
                         <span class="text-lg text-gray-600 block">Harga Spesial:</span>
                         @if($data->discount > 0)
@@ -214,7 +238,7 @@
                         @endif
                     </div>
 
-                    {{-- $userTryout adalah $this->userTryoutHistory yang dikirim dari render() --}}
+                    {{-- Logic Tombol Mulai/Beli --}}
                     @if($userTryout->isNotEmpty())
                         @php
                             $completed_attempts = $userTryout->where('is_completed', 1)->count();
@@ -234,15 +258,16 @@
                             </div>
                         </div>
 
+                        {{-- Tombol Lihat Hasil (Jika pernah selesai) --}}
                         @if($has_completed_attempts)
                             <a href="{{ route('tryout.my-results', ['tryout' => $data->slug]) }}"
-                                class="flex items-center justify-center bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-4 px-6 rounded-xl shadow-lg transition-all duration-300 w-full text-lg transform hover:scale-[1.02] mb-4 relative z-10 group">
+                               class="flex items-center justify-center bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-4 px-6 rounded-xl shadow-lg transition-all duration-300 w-full text-lg transform hover:scale-[1.02] mb-4 relative z-10 group">
                                 <i class="fas fa-chart-bar mr-3 text-xl group-hover:scale-110 transition-transform duration-300"></i> 
                                 Lihat Hasil Tryout
                             </a>
                         @endif
 
-                        {{-- Logika untuk menampilkan tombol "Mulai" --}}
+                        {{-- Tombol Mulai/Lanjutkan --}}
                         @php
                             $nextAttemptData = $userTryout->firstWhere('attempt', $next_attempt);
                         @endphp
@@ -252,7 +277,6 @@
                                    class="flex items-center justify-center bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-4 px-6 rounded-xl shadow-lg transition-all duration-300 w-full text-lg transform hover:scale-[1.02] cursor-pointer relative z-10 group">
                                 <i class="fa-solid fa-play-circle mr-3 text-xl group-hover:scale-110 transition-transform duration-300"></i> 
                                 
-                                {{-- Jika sudah pernah dimulai, tampilkan "Lanjutkan" --}}
                                 @if($nextAttemptData->started_at && !$nextAttemptData->is_completed)
                                     Lanjutkan Percobaan Ke-{{ $next_attempt }}
                                 @else
@@ -260,13 +284,14 @@
                                 @endif
                             </div>
                         @else
-                            {{-- Ini terjadi jika user sudah 3x selesai --}}
+                            {{-- Jika sudah max attempt --}}
                             <div class="text-center bg-gray-100 p-4 rounded-xl border border-gray-200">
                                 <p class="font-medium text-gray-700">Anda telah menyelesaikan semua percobaan.</p>
                             </div>
                         @endif
 
                     @else
+                        {{-- Tombol Beli --}}
                         <a href="{{ route('tryout.payment', ['tryout_slug' => $data->slug]) }}"
                            wire:navigate
                            class="flex items-center justify-center bg-gradient-to-r from-primary to-blue-600 hover:from-primary-dark hover:to-blue-700 text-white font-semibold py-4 px-6 rounded-xl shadow-lg transition-all duration-300 w-full text-lg transform hover:scale-[1.02] relative z-10 group">
@@ -282,12 +307,11 @@
                         Kembali ke Daftar Try Out
                     </a>
                 </div>
-
             </div>
         </div>
     </div>
 
-    {{-- Modal Copyright --}}
+    {{-- MODAL COPYRIGHT & KONFIRMASI --}}
     <div
         x-data="{ showModal: false }"
         x-on:show-copyright-modal.window="showModal = true"
@@ -371,8 +395,3 @@
         </div>
     </div>
 </div>
-
-{{-- 
-  [DIHAPUS] Blok @push('scripts') yang sebelumnya ada di sini 
-  telah dihapus karena fungsinya digantikan oleh Alpine.js di atas.
---}}

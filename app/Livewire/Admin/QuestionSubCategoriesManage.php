@@ -53,7 +53,8 @@ class QuestionSubCategoriesManage extends Component
             }, function ($query) {
                 $query->whereNull('deleted_at'); // Hanya tampilkan yang tidak terhapus
             })
-            ->latest()
+            // PERUBAHAN: Menggunakan oldest() agar data terlama/tertua menjadi Nomor 1.
+            ->oldest()
             ->paginate(10);
 
         $categories = QuestionCategory::where('is_active', true)->get();
