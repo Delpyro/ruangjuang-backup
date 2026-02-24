@@ -7,26 +7,26 @@ use App\Models\UserTryout;
 use App\Models\UserAnswer;
 use App\Models\Ranking;
 use App\Models\TryoutCategoryScore;
+use App\Models\Question;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
+use Livewire\Attributes\Computed;
 use Carbon\Carbon;
 
 class TryoutWorksheet extends Component
 {
     public Tryout $tryout;
-    public $userTryout;
+    public $userTryoutId; 
     public $endTime;
     public $title;
 
-    // State untuk Sinkronisasi dengan Alpine.js
-    // allQuestions disimpan sebagai array agar hydration Livewire cepat (tidak berat di proses serialisasi)
-    public array $allQuestions = []; 
-    
-    // userAnswers adalah "Source of Truth" (Data resmi yang ada di Database)
-    // Digunakan frontend untuk reset pilihan jika user pindah soal tanpa klik simpan
-    public array $userAnswers = [];  
-    
+    /** * STATE RINGAN
+     * Hanya menyimpan ID dan Index agar payload tetap kecil (< 10KB).
+     */
+    public int $currentIndex = 0; 
+    public array $questionIds = []; 
+    public array $userAnswers = []; 
     public int $totalQuestions = 0;
     public float $progressPercent = 0;
 
@@ -43,42 +43,54 @@ class TryoutWorksheet extends Component
             ->where('attempt', $attempt)
             ->first();
 
-        // 2. Proteksi Akses & Status Selesai
+        // Proteksi akses dan waktu
         if (!$userTryout || $userTryout->is_completed) {
             return $this->redirect(route('tryout.my-tryouts'), navigate: true);
         }
 
-        // 3. Proteksi Waktu (Cek Server-Side)
         if (Carbon::now()->isAfter($userTryout->ended_at)) {
             $this->forceFinishExam($userTryout);
             return $this->redirect(route('tryout.my-results', $this->tryout->slug), navigate: true);
         }
 
-        $this->userTryout = $userTryout;
+        $this->userTryoutId = $userTryout->id;
         $this->endTime = $userTryout->ended_at->toIso8601String();
 
-        // 4. Load Data (Eager Loading & Stripping)
-        $this->loadInitialData();
+        // Strategi Pagination: Hanya ambil ID Soal
+        $this->questionIds = $this->tryout->activeQuestions()
+            ->orderBy('id', 'asc')
+            ->pluck('id')
+            ->toArray();
+        
+        $this->totalQuestions = count($this->questionIds);
+
+        $this->loadUserAnswers();
         $this->calculateProgress();
     }
 
     /**
-     * Memuat soal dan progres jawaban resmi dari Database.
+     * COMPUTED PROPERTY: Fetch-on-Demand.
+     * Mengambil detail soal hanya saat index berubah. 
+     * Data ini tidak dikirim bolak-balik dalam state JSON Livewire.
      */
-    private function loadInitialData()
+    #[Computed]
+    public function currentQuestion()
     {
-        // Ambil soal & jawaban (Menyesuaikan kolom DB Bank NTT: id_question_categories, id_question_sub_category)
-        $questions = $this->tryout->activeQuestions()
-            ->with(['subCategory', 'answers' => function($query) {
+        if (!isset($this->questionIds[$this->currentIndex])) return null;
+
+        return Question::with(['subCategory', 'answers' => function($query) {
                 $query->select('id', 'id_question', 'answer'); 
             }])
-            ->get(['id', 'id_question_categories', 'id_question_sub_category', 'question', 'image']);
+            ->select('id', 'id_question_categories', 'id_question_sub_category', 'question', 'image')
+            ->find($this->questionIds[$this->currentIndex]);
+    }
 
-        $this->allQuestions = $questions->toArray();
-        $this->totalQuestions = count($this->allQuestions);
-
-        // Ambil data jawaban yang SUDAH TERSIMPAN di Database
-        $this->userAnswers = UserAnswer::where('user_tryout_id', $this->userTryout->id)
+    /**
+     * Memuat data jawaban tersimpan untuk sinkronisasi UI.
+     */
+    private function loadUserAnswers()
+    {
+        $this->userAnswers = UserAnswer::where('user_tryout_id', $this->userTryoutId)
             ->get(['question_id', 'answer_id', 'is_doubtful'])
             ->keyBy('question_id')
             ->map(fn($item) => [
@@ -88,23 +100,22 @@ class TryoutWorksheet extends Component
     }
 
     /**
-     * METHOD SIMPAN: Hanya dipanggil saat user klik "Simpan & Lanjut" di View.
+     * Menyimpan jawaban. 
+     * Diperbaiki agar tetap menyimpan status ragu meski jawaban kosong.
      */
     public function saveAnswer($questionId, $answerId, $isDoubtful = false)
     {
         try {
-            if (!$this->userTryout || !$questionId) return;
+            if (!$this->userTryoutId || !$questionId) return;
 
-            // Security: Hitung poin di server berdasarkan answer_id
             $points = 0;
             if ($answerId) {
                 $points = DB::table('answers')->where('id', $answerId)->value('points') ?? 0;
             }
 
-            // Database Persistence (Urutan sesuai Composite Index: user_tryout_id + question_id)
             UserAnswer::updateOrCreate(
                 [
-                    'user_tryout_id' => $this->userTryout->id, 
+                    'user_tryout_id' => $this->userTryoutId, 
                     'question_id'    => $questionId
                 ],
                 [
@@ -115,7 +126,7 @@ class TryoutWorksheet extends Component
                 ]
             );
 
-            // Sync ke Properti Livewire agar Sidebar berubah warna & Progress terupdate
+            // Update state lokal untuk warna sidebar instan
             $this->userAnswers[$questionId] = [
                 'answer_id' => $answerId,
                 'is_doubtful' => $isDoubtful,
@@ -128,9 +139,6 @@ class TryoutWorksheet extends Component
         }
     }
 
-    /**
-     * Update persentase progres berdasarkan data resmi di DB.
-     */
     private function calculateProgress()
     {
         $answeredCount = collect($this->userAnswers)->whereNotNull('answer_id')->count();
@@ -139,18 +147,18 @@ class TryoutWorksheet extends Component
             : 0;
     }
 
-    /**
-     * Menutup sesi ujian.
-     */
     public function finishExam()
     {
-        $this->forceFinishExam($this->userTryout);
+        $userTryout = UserTryout::find($this->userTryoutId);
+        $this->forceFinishExam($userTryout);
+        
         session()->flash('success', 'Ujian telah dikumpulkan.');
         return $this->redirect(route('tryout.my-results', $this->tryout->slug), navigate: true);
     }
 
     /**
-     * Logika Kalkulasi Skor (Heavy Task - Dijalankan di akhir saja).
+     * Finalisasi Kalkulasi Skor.
+     * Menangani skor per kategori sesuai kebutuhan proyek Bank NTT.
      */
     private function forceFinishExam(UserTryout $userTryout)
     {
@@ -168,7 +176,7 @@ class TryoutWorksheet extends Component
                 $summary = [];
 
                 foreach ($allQuestions as $q) {
-                    $catId = $q->category->id ?? 0;
+                    $catId = $q->id_question_categories ?? 0;
                     if (!isset($summary[$catId])) {
                         $summary[$catId] = ['score' => 0, 'correct' => 0, 'wrong' => 0, 'empty' => 0, 'total' => 0];
                     }
@@ -187,13 +195,11 @@ class TryoutWorksheet extends Component
                     }
                 }
 
-                // 1. Simpan Ranking
                 Ranking::updateOrCreate(
                     ['id_user' => Auth::id(), 'tryout_id' => $userTryout->tryout_id],
                     ['score' => $totalScore]
                 );
 
-                // 2. Simpan Rapor Per Kategori
                 foreach ($summary as $catId => $stat) {
                     TryoutCategoryScore::updateOrCreate(
                         ['user_tryout_id' => $userTryout->id, 'question_category_id' => $catId],
