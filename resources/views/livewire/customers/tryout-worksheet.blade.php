@@ -183,13 +183,12 @@
                     <span class="text-sm font-semibold z-10 text-black" x-text="Math.round($wire.progressPercent) + '%'"></span>
                 </div>
 
-                {{-- Konten Soal (Render dari Computed Property) --}}
+                {{-- Konten Soal --}}
                 @if($this->currentQuestion)
                     <div class="bg-[#2563EA] text-white p-4 rounded-lg mb-4">
                         <h4 class="font-bold text-lg uppercase">{{ $this->currentQuestion->subCategory->name ?? 'Kategori' }}</h4>
                     </div>
 
-                    {{-- wire:key sangat penting agar DOM di-refresh saat pindah soal --}}
                     <div class="p-0 bg-gray-50 w-full" wire:key="q-{{ $this->currentQuestion->id }}">
                         <div class="mb-6 text-gray-800 text-base md:text-lg tinymce-content">
                             <span class="float-left mr-2 font-bold">{{ $currentIndex + 1 }}.</span>

@@ -14,6 +14,10 @@ use Livewire\Component;
 use Livewire\Attributes\Computed;
 use Carbon\Carbon;
 
+/**
+ * Controller Worksheet dioptimasi untuk performa maksimal.
+ * Target response time: < 500ms.
+ */
 class TryoutWorksheet extends Component
 {
     public Tryout $tryout;
@@ -21,18 +25,13 @@ class TryoutWorksheet extends Component
     public $endTime;
     public $title;
 
-    /** * STATE RINGAN
-     * Hanya menyimpan ID dan Index agar payload tetap kecil (< 10KB).
-     */
+    // State ringan untuk meminimalisir payload JSON Livewire
     public int $currentIndex = 0; 
     public array $questionIds = []; 
     public array $userAnswers = []; 
     public int $totalQuestions = 0;
     public float $progressPercent = 0;
 
-    /**
-     * Inisialisasi awal saat halaman dimuat.
-     */
     public function mount(Tryout $tryout, $attempt = 1)
     {
         $this->tryout = $tryout;
@@ -43,7 +42,6 @@ class TryoutWorksheet extends Component
             ->where('attempt', $attempt)
             ->first();
 
-        // Proteksi akses dan waktu
         if (!$userTryout || $userTryout->is_completed) {
             return $this->redirect(route('tryout.my-tryouts'), navigate: true);
         }
@@ -56,11 +54,11 @@ class TryoutWorksheet extends Component
         $this->userTryoutId = $userTryout->id;
         $this->endTime = $userTryout->ended_at->toIso8601String();
 
-        // Strategi Pagination: Hanya ambil ID Soal
+        // Ambil ID soal dengan urutan tetap untuk efisiensi fetch
         $this->questionIds = $this->tryout->activeQuestions()
             ->orderBy('id', 'asc')
             ->pluck('id')
-            ->toArray();
+                ->toArray();
         
         $this->totalQuestions = count($this->questionIds);
 
@@ -69,25 +67,21 @@ class TryoutWorksheet extends Component
     }
 
     /**
-     * COMPUTED PROPERTY: Fetch-on-Demand.
-     * Mengambil detail soal hanya saat index berubah. 
-     * Data ini tidak dikirim bolak-balik dalam state JSON Livewire.
+     * OPTIMASI 1: Fetch-on-Demand dengan Select Kolom Terbatas.
+     * Mengurangi penggunaan memori server saat merender soal.
      */
     #[Computed]
     public function currentQuestion()
     {
         if (!isset($this->questionIds[$this->currentIndex])) return null;
 
-        return Question::with(['subCategory', 'answers' => function($query) {
+        return Question::with(['answers' => function($query) {
                 $query->select('id', 'id_question', 'answer'); 
             }])
             ->select('id', 'id_question_categories', 'id_question_sub_category', 'question', 'image')
             ->find($this->questionIds[$this->currentIndex]);
     }
 
-    /**
-     * Memuat data jawaban tersimpan untuk sinkronisasi UI.
-     */
     private function loadUserAnswers()
     {
         $this->userAnswers = UserAnswer::where('user_tryout_id', $this->userTryoutId)
@@ -100,20 +94,22 @@ class TryoutWorksheet extends Component
     }
 
     /**
-     * Menyimpan jawaban. 
-     * Diperbaiki agar tetap menyimpan status ragu meski jawaban kosong.
+     * OPTIMASI 2: Menggunakan Query Builder (DB Table).
+     * Bypass Eloquent Model untuk performa simpan yang jauh lebih cepat.
      */
     public function saveAnswer($questionId, $answerId, $isDoubtful = false)
     {
         try {
             if (!$this->userTryoutId || !$questionId) return;
 
+            // Ambil poin langsung via Query Builder (lebih cepat dari Eloquent)
             $points = 0;
             if ($answerId) {
                 $points = DB::table('answers')->where('id', $answerId)->value('points') ?? 0;
             }
 
-            UserAnswer::updateOrCreate(
+            // Database Persistence menggunakan updateOrInsert (High Speed)
+            DB::table('users_answers')->updateOrInsert(
                 [
                     'user_tryout_id' => $this->userTryoutId, 
                     'question_id'    => $questionId
@@ -122,11 +118,12 @@ class TryoutWorksheet extends Component
                     'id_user'     => Auth::id(),
                     'answer_id'   => $answerId,
                     'is_doubtful' => $isDoubtful,
-                    'score'       => $points
+                    'score'       => $points,
+                    'updated_at'  => now()
                 ]
             );
 
-            // Update state lokal untuk warna sidebar instan
+            // Update state lokal untuk visual sidebar & progress
             $this->userAnswers[$questionId] = [
                 'answer_id' => $answerId,
                 'is_doubtful' => $isDoubtful,
@@ -135,7 +132,7 @@ class TryoutWorksheet extends Component
             $this->calculateProgress();
 
         } catch (\Exception $e) {
-            logger()->error("Gagal simpan jawaban User: " . Auth::id() . " | Error: " . $e->getMessage());
+            logger()->error("Koneksi Database Lambat/Gagal: " . $e->getMessage());
         }
     }
 
@@ -152,13 +149,12 @@ class TryoutWorksheet extends Component
         $userTryout = UserTryout::find($this->userTryoutId);
         $this->forceFinishExam($userTryout);
         
-        session()->flash('success', 'Ujian telah dikumpulkan.');
+        session()->flash('success', 'Ujian telah berhasil dikumpulkan.');
         return $this->redirect(route('tryout.my-results', $this->tryout->slug), navigate: true);
     }
 
     /**
-     * Finalisasi Kalkulasi Skor.
-     * Menangani skor per kategori sesuai kebutuhan proyek Bank NTT.
+     * Finalisasi Skor (Sesuai kebutuhan Bank NTT).
      */
     private function forceFinishExam(UserTryout $userTryout)
     {
@@ -169,6 +165,7 @@ class TryoutWorksheet extends Component
             ]);
 
             if ($userTryout->attempt == 1) {
+                // Kalkulasi akhir tetap menggunakan Eloquent karena dijalankan hanya sekali
                 $allQuestions = $this->tryout->activeQuestions()->with('category')->get();
                 $savedAnswers = UserAnswer::where('user_tryout_id', $userTryout->id)->get()->keyBy('question_id');
 
