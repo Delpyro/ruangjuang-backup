@@ -5,217 +5,452 @@ namespace App\Livewire\Customers;
 use App\Models\Tryout;
 use App\Models\UserTryout;
 use App\Models\UserAnswer;
-use App\Models\Ranking;
-use App\Models\TryoutCategoryScore;
 use App\Models\Question;
+use App\Models\Ranking; 
+use App\Models\TryoutCategoryScore; 
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Livewire\Component;
-use Livewire\Attributes\Computed;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\On;
 
-/**
- * Controller Worksheet dioptimasi untuk performa maksimal.
- * Target response time: < 500ms.
- */
 class TryoutWorksheet extends Component
 {
     public Tryout $tryout;
-    public $userTryoutId; 
-    public $endTime;
-    public $title;
+    public $userTryout; 
+    public $endTime; 
+    public $title; 
 
-    // State ringan untuk meminimalisir payload JSON Livewire
-    public int $currentIndex = 0; 
-    public array $questionIds = []; 
-    public array $userAnswers = []; 
+    // --- Properti Soal ---
+    public array $questionIds = [];
+    public ?Question $currentQuestion = null;
+    public int $currentQuestionIndex = 0;
     public int $totalQuestions = 0;
+    
+    public array $userAnswers = [];
+
+    // --- Properti Live ---
+    public $selectedAnswerId = null; 
+    public bool $isDoubtful = false;
+    
+    // Properti untuk melacak state 'original'
+    private $originalAnswerId = null;
+    private bool $originalDoubtful = false;
+    
     public float $progressPercent = 0;
 
+    
+    // ----------------------------------------------------------------------
+    // INIT & SETUP 
+    // ----------------------------------------------------------------------
+
+    /**
+     * Mount komponen.
+     */
     public function mount(Tryout $tryout, $attempt = 1)
     {
         $this->tryout = $tryout;
-        $this->title = 'Pengerjaan: ' . $this->tryout->title;
+        $this->title = 'Pengerjaan Tryout: ' . $this->tryout->title;
 
         $userTryout = UserTryout::where('id_user', Auth::id())
-            ->where('tryout_id', $this->tryout->id)
-            ->where('attempt', $attempt)
-            ->first();
+                                ->where('tryout_id', $this->tryout->id)
+                                ->where('attempt', $attempt) 
+                                ->first();
 
-        if (!$userTryout || $userTryout->is_completed) {
-            return $this->redirect(route('tryout.my-tryouts'), navigate: true);
+        if (!$userTryout) {
+            session()->flash('error', 'Sesi tryout (attempt ' . $attempt . ') tidak ditemukan.');
+            return $this->redirect(route('tryout.my-tryouts'));
         }
-
-        if (Carbon::now()->isAfter($userTryout->ended_at)) {
-            $this->forceFinishExam($userTryout);
-            return $this->redirect(route('tryout.my-results', $this->tryout->slug), navigate: true);
-        }
-
-        $this->userTryoutId = $userTryout->id;
-        $this->endTime = $userTryout->ended_at->toIso8601String();
-
-        // Ambil ID soal dengan urutan tetap untuk efisiensi fetch
-        $this->questionIds = $this->tryout->activeQuestions()
-            ->orderBy('id', 'asc')
-            ->pluck('id')
-                ->toArray();
         
+        if ($userTryout->is_completed) {
+            session()->flash('info', 'Attempt ini sudah selesai. Melihat hasil.');
+            return $this->redirect(route('tryout.my-results', $this->tryout->slug));
+        }
+
+        if (!$userTryout->started_at) {
+            session()->flash('error', 'Tryout belum dimulai. Silakan mulai tryout Anda dari halaman My Tryouts.');
+            return $this->redirect(route('tryout.my-tryouts'));
+        }
+
+        $this->userTryout = $userTryout;
+        
+        // Cek apakah waktu sudah habis secara real-time
+        if (Carbon::now()->isAfter($userTryout->ended_at)) {
+            $this->forceFinishExam($userTryout); 
+            session()->flash('error', 'Waktu pengerjaan tryout ini sudah habis. Jawaban Anda disimpan dan dinilai.');
+            return $this->redirect(route('tryout.my-results', $this->tryout->slug));
+        }
+
+        $this->endTime = $userTryout->ended_at->toIso8601String();
+        
+        if (! $this->loadQuestions()) {
+            return;
+        }
+        
+        $this->loadUserProgress();
+        $this->setCurrentQuestion();
+        $this->updateProgress();
+        
+        if (session()->has('tryout_timer_data')) {
+            $timerData = session()->get('tryout_timer_data');
+            $this->dispatch('save-timer-to-storage', $timerData);
+            session()->forget('tryout_timer_data');
+        }
+    }
+
+    private function loadQuestions(): bool
+    {
+        $questionModels = $this->tryout->activeQuestions() 
+                                    ->select('id') 
+                                    ->get();
+        
+        $this->questionIds = $questionModels->pluck('id')->toArray();
         $this->totalQuestions = count($this->questionIds);
 
-        $this->loadUserAnswers();
-        $this->calculateProgress();
+        if ($this->totalQuestions == 0) {
+            session()->flash('error', 'Tryout ini belum memiliki soal aktif.');
+            $this->redirect(route('tryout.my-tryouts'));
+            return false;
+        }
+        
+        return true;
     }
 
-    /**
-     * OPTIMASI 1: Fetch-on-Demand dengan Select Kolom Terbatas.
-     * Mengurangi penggunaan memori server saat merender soal.
-     */
-    #[Computed]
-    public function currentQuestion()
+    private function loadUserProgress()
     {
-        if (!isset($this->questionIds[$this->currentIndex])) return null;
-
-        return Question::with(['answers' => function($query) {
-                $query->select('id', 'id_question', 'answer'); 
-            }])
-            ->select('id', 'id_question_categories', 'id_question_sub_category', 'question', 'image')
-            ->find($this->questionIds[$this->currentIndex]);
-    }
-
-    private function loadUserAnswers()
-    {
-        $this->userAnswers = UserAnswer::where('user_tryout_id', $this->userTryoutId)
-            ->get(['question_id', 'answer_id', 'is_doubtful'])
-            ->keyBy('question_id')
-            ->map(fn($item) => [
-                'answer_id' => $item->answer_id,
-                'is_doubtful' => (bool)$item->is_doubtful,
-            ])->toArray();
-    }
-
-    /**
-     * OPTIMASI 2: Menggunakan Query Builder (DB Table).
-     * Bypass Eloquent Model untuk performa simpan yang jauh lebih cepat.
-     */
-    public function saveAnswer($questionId, $answerId, $isDoubtful = false)
-    {
-        try {
-            if (!$this->userTryoutId || !$questionId) return;
-
-            // Ambil poin langsung via Query Builder (lebih cepat dari Eloquent)
-            $points = 0;
-            if ($answerId) {
-                $points = DB::table('answers')->where('id', $answerId)->value('points') ?? 0;
-            }
-
-            // Database Persistence menggunakan updateOrInsert (High Speed)
-            DB::table('users_answers')->updateOrInsert(
-                [
-                    'user_tryout_id' => $this->userTryoutId, 
-                    'question_id'    => $questionId
-                ],
-                [
-                    'id_user'     => Auth::id(),
-                    'answer_id'   => $answerId,
-                    'is_doubtful' => $isDoubtful,
-                    'score'       => $points,
-                    'updated_at'  => now()
-                ]
-            );
-
-            // Update state lokal untuk visual sidebar & progress
-            $this->userAnswers[$questionId] = [
-                'answer_id' => $answerId,
-                'is_doubtful' => $isDoubtful,
+        $answers = UserAnswer::where('user_tryout_id', $this->userTryout->id) 
+                           ->whereIn('question_id', $this->questionIds)
+                           ->get();
+        
+        $this->userAnswers = $answers->keyBy('question_id')->map(function ($answer) {
+            return [
+                'answer_id' => $answer->answer_id,
+                'is_doubtful' => $answer->is_doubtful,
             ];
+        })->toArray();
+    }
 
-            $this->calculateProgress();
+    private function setCurrentQuestion()
+    {
+        if ($this->currentQuestionIndex < 0) {
+            $this->currentQuestionIndex = 0;
+        }
+        if ($this->currentQuestionIndex >= $this->totalQuestions) {
+            $this->currentQuestionIndex = $this->totalQuestions - 1;
+        }
 
-        } catch (\Exception $e) {
-            logger()->error("Koneksi Database Lambat/Gagal: " . $e->getMessage());
+        $questionId = $this->questionIds[$this->currentQuestionIndex] ?? null;
+
+        if (!$questionId) {
+            session()->flash('error', 'Gagal memuat soal. Silakan muat ulang halaman.');
+            return;
+        }
+
+        $this->currentQuestion = Question::with(['answers', 'subCategory'])->find($questionId);
+        
+        if (! $this->currentQuestion) {
+            session()->flash('error', 'Gagal memuat soal. Silakan muat ulang halaman.');
+            return;
+        }
+
+        $savedAnswer = $this->userAnswers[$this->currentQuestion->id] ?? null;
+
+        $this->selectedAnswerId = $savedAnswer['answer_id'] ?? null;
+        $this->isDoubtful = $savedAnswer['is_doubtful'] ?? false;
+        
+        $this->originalAnswerId = $this->selectedAnswerId;
+        $this->originalDoubtful = $this->isDoubtful;
+        
+        $this->resetErrorBag();
+    }
+
+    // ----------------------------------------------------------------------
+    // ACTION METHODS 
+    // ----------------------------------------------------------------------
+
+    public function saveAnswer()
+    {
+        $isAnswerChanged = ($this->selectedAnswerId != $this->originalAnswerId);
+        $isDoubtfulChanged = ($this->isDoubtful != $this->originalDoubtful);
+
+        if (!$isAnswerChanged && !$isDoubtfulChanged) {
+            return; 
+        }
+
+        if (!$this->currentQuestion || !$this->userTryout) {
+            return;
+        }
+
+        $points = 0; 
+
+        if ($this->selectedAnswerId) {
+            if (!$this->currentQuestion->relationLoaded('answers')) {
+                $this->currentQuestion->load('answers');
+            }
+            $selected = $this->currentQuestion->answers->find($this->selectedAnswerId);
+            $points = $selected->points ?? 0;
+        }
+
+        UserAnswer::updateOrCreate(
+            [
+                'user_tryout_id' => $this->userTryout->id, 
+                'question_id' => $this->currentQuestion->id
+            ],
+            [
+                'id_user' => Auth::id(), 
+                'answer_id' => $this->selectedAnswerId,
+                'is_doubtful' => $this->isDoubtful,
+                'score' => $points 
+            ]
+        );
+
+        $this->userAnswers[$this->currentQuestion->id] = [
+            'answer_id' => $this->selectedAnswerId,
+            'is_doubtful' => $this->isDoubtful,
+        ];
+        
+        $this->originalAnswerId = $this->selectedAnswerId;
+        $this->originalDoubtful = $this->isDoubtful;
+
+        $this->updateProgress();
+    }
+
+    public function showFinishConfirmation()
+    {
+        $this->dispatch('show-finish-alert');
+    }
+
+    public function saveAndNext()
+    {
+        $this->saveAnswer();
+        
+        if ($this->currentQuestionIndex < $this->totalQuestions - 1) {
+            $this->currentQuestionIndex++;
+            $this->setCurrentQuestion();
         }
     }
 
-    private function calculateProgress()
+    public function previousQuestion()
     {
-        $answeredCount = collect($this->userAnswers)->whereNotNull('answer_id')->count();
-        $this->progressPercent = $this->totalQuestions > 0 
-            ? round(($answeredCount / $this->totalQuestions) * 100, 1) 
-            : 0;
+        $this->saveAnswer();
+        
+        if ($this->currentQuestionIndex > 0) {
+            $this->currentQuestionIndex--;
+            $this->setCurrentQuestion();
+        }
     }
 
+    public function navigateToQuestion($index)
+    {
+        $this->saveAnswer();
+        $this->currentQuestionIndex = $index;
+        $this->setCurrentQuestion();
+    }
+    
+    public function skipQuestion()
+    {
+        $this->saveAnswer();
+        
+        if ($this->currentQuestionIndex < $this->totalQuestions - 1) {
+            $this->currentQuestionIndex++;
+            $this->setCurrentQuestion(); 
+        }
+    }
+    
     public function finishExam()
     {
-        $userTryout = UserTryout::find($this->userTryoutId);
-        $this->forceFinishExam($userTryout);
+        $this->saveAnswer(); 
+        $this->forceFinishExam($this->userTryout); 
         
-        session()->flash('success', 'Ujian telah berhasil dikumpulkan.');
-        return $this->redirect(route('tryout.my-results', $this->tryout->slug), navigate: true);
+        session()->flash('success', 'Tryout telah berhasil diselesaikan. Menghitung hasil...');
+        return $this->redirect(route('tryout.my-results', $this->tryout->slug)); 
+    }
+    
+    // ----------------------------------------------------------------------
+    // HOOKS 
+    // ----------------------------------------------------------------------
+
+    public function updatedIsDoubtful($value)
+    {
+        $this->isDoubtful = (bool) $value;
     }
 
+    public function updatedSelectedAnswerId($value)
+    {
+        $this->selectedAnswerId = $value;
+        if($value !== null) {
+            $this->isDoubtful = false;
+        }
+    }
+
+    // ----------------------------------------------------------------------
+    // HELPERS 
+    // ----------------------------------------------------------------------
+
+    private function updateProgress()
+    {
+        $answeredCount = 0;
+        foreach ($this->userAnswers as $answer) {
+            if ($answer['answer_id'] !== null) {
+                $answeredCount++;
+            }
+        }
+        
+        if ($this->totalQuestions > 0) {
+            $this->progressPercent = round(($answeredCount / $this->totalQuestions) * 100);
+        }
+    }
+    
     /**
-     * Finalisasi Skor (Sesuai kebutuhan Bank NTT).
+     * [LOGIKA DIPERBAIKI - FIX BUG WAKTU]
+     * Helper untuk menandai tryout selesai + MENYIMPAN RANKING + MENYIMPAN RAPOR.
      */
     private function forceFinishExam(UserTryout $userTryout)
     {
-        DB::transaction(function () use ($userTryout) {
-            $userTryout->update([
-                'is_completed' => true,
-                'ended_at'     => Carbon::now()
-            ]);
+        // 1. Tandai ujian sebagai selesai
+        $userTryout->is_completed = true;
+        
+        // [PERBAIKAN UTAMA DI SINI]
+        // Kita HAPUS pengecekan if(!$userTryout->ended_at)
+        // Kita paksa 'ended_at' diupdate menjadi WAKTU SEKARANG (Realtime)
+        // Agar menimpa waktu deadline yang tersimpan sebelumnya.
+        $userTryout->ended_at = Carbon::now(); 
 
-            if ($userTryout->attempt == 1) {
-                // Kalkulasi akhir tetap menggunakan Eloquent karena dijalankan hanya sekali
-                $allQuestions = $this->tryout->activeQuestions()->with('category')->get();
-                $savedAnswers = UserAnswer::where('user_tryout_id', $userTryout->id)->get()->keyBy('question_id');
+        $userTryout->save();
 
-                $totalScore = 0;
-                $summary = [];
+        //
+        // --- LOGIKA RANKING & RAPOR ---
+        //
+        
+        // 2. Cek apakah ini PERCOBAAN PERTAMA.
+        if ($userTryout->attempt == 1) {
+            
+            // --- Logika Kalkulasi Lengkap ---
+            
+            // Ambil semua soal aktif untuk tryout ini, lengkap dengan info kategori
+            $allTryoutQuestions = $this->tryout->activeQuestions()
+                                             ->with('category')
+                                             ->get();
+            
+            // Ambil semua jawaban user untuk pengerjaan ini
+            $userAnswers = UserAnswer::where('user_tryout_id', $userTryout->id)
+                                     ->with(['answer', 'question.category']) 
+                                     ->get()
+                                     ->keyBy('question_id');
 
-                foreach ($allQuestions as $q) {
-                    $catId = $q->id_question_categories ?? 0;
-                    if (!isset($summary[$catId])) {
-                        $summary[$catId] = ['score' => 0, 'correct' => 0, 'wrong' => 0, 'empty' => 0, 'total' => 0];
-                    }
-
-                    $summary[$catId]['total']++;
-                    $ans = $savedAnswers->get($q->id);
-
-                    if ($ans && $ans->answer_id) {
-                        $totalScore += $ans->score;
-                        $summary[$catId]['score'] += $ans->score;
-
-                        $isCorrect = DB::table('answers')->where('id', $ans->answer_id)->value('is_correct');
-                        $isCorrect ? $summary[$catId]['correct']++ : $summary[$catId]['wrong']++;
-                    } else {
-                        $summary[$catId]['empty']++;
-                    }
+            $categorySummary = [];
+            $totalScore = 0.0;
+            
+            // Inisialisasi Kategori (berdasarkan SEMUA soal)
+            foreach ($allTryoutQuestions as $question) {
+                $categoryId = $question->category->id ?? 0;
+                if (!isset($categorySummary[$categoryId])) {
+                    $categorySummary[$categoryId] = [
+                        'category_id' => $categoryId, 
+                        'total_soal' => 0,
+                        'skor_kategori' => 0.0,
+                        'benar' => 0,
+                        'salah' => 0,
+                        'kosong' => 0,
+                    ];
                 }
+                $categorySummary[$categoryId]['total_soal']++;
+            }
 
-                Ranking::updateOrCreate(
-                    ['id_user' => Auth::id(), 'tryout_id' => $userTryout->tryout_id],
-                    ['score' => $totalScore]
-                );
+            // Proses Jawaban
+            foreach ($allTryoutQuestions as $question) {
+                $categoryId = $question->category->id ?? 0;
+                $userAnswer = $userAnswers->get($question->id);
 
-                foreach ($summary as $catId => $stat) {
-                    TryoutCategoryScore::updateOrCreate(
-                        ['user_tryout_id' => $userTryout->id, 'question_category_id' => $catId],
-                        [
-                            'score'            => $stat['score'],
-                            'correct_count'    => $stat['correct'],
-                            'wrong_count'      => $stat['wrong'],
-                            'unanswered_count' => $stat['empty'],
-                            'total_questions'  => $stat['total']
-                        ]
-                    );
+                if ($userAnswer && $userAnswer->answer_id) {
+                    // --- KASUS 1: DIJAWAB ---
+                    $selectedAnswerModel = $userAnswer->answer;
+                    $pointsEarned = $userAnswer->score ?? 0;
+                    $isCorrect = $selectedAnswerModel ? $selectedAnswerModel->is_correct : false;
+
+                    if ($isCorrect) {
+                        $categorySummary[$categoryId]['benar']++;
+                    } else {
+                        $categorySummary[$categoryId]['salah']++;
+                    }
+                    $totalScore += $pointsEarned;
+                    $categorySummary[$categoryId]['skor_kategori'] += $pointsEarned;
+
+                } else {
+                    // --- KASUS 2: TIDAK DIJAWAB ---
+                    $categorySummary[$categoryId]['kosong']++;
                 }
             }
-        });
+            // --- Akhir Logika Kalkulasi ---
+
+            // 3. Simpan Skor Total ke tabel Ranking
+            Ranking::updateOrCreate(
+                [
+                    'id_user'   => $userTryout->id_user,
+                    'tryout_id' => $userTryout->tryout_id,
+                ],
+                [
+                    'score'     => $totalScore 
+                ]
+            );
+
+            // 4. Simpan Skor Detail per Kategori ke tabel Rapor
+            foreach ($categorySummary as $stat) {
+                TryoutCategoryScore::updateOrCreate(
+                    [
+                        'user_tryout_id' => $userTryout->id,
+                        'question_category_id' => $stat['category_id'],
+                    ],
+                    [
+                        'score' => $stat['skor_kategori'],
+                        'correct_count' => $stat['benar'],
+                        'wrong_count' => $stat['salah'],
+                        'unanswered_count' => $stat['kosong'],
+                        'total_questions' => $stat['total_soal']
+                    ]
+                );
+            }
+        }
+    }
+    
+    // =========================================================
+    // CSS STATUS NAVIGASI
+    // =========================================================
+    public function getQuestionStatusClass($index): string
+    {
+        if (!isset($this->questionIds[$index])) {
+            return 'bg-gray-400'; 
+        }
+        
+        $questionId = $this->questionIds[$index];
+        
+        $doubtfulColor = 'bg-ragu-ragu'; 
+        $answeredColor = 'bg-answered'; 
+        $unansweredColor = 'bg-red-600';
+        
+        if ($this->currentQuestionIndex === $index) {
+            if ($this->isDoubtful) {
+                return $doubtfulColor; 
+            }
+            if ($this->selectedAnswerId !== null) {
+                return $answeredColor; 
+            }
+        }
+
+        $status = $this->userAnswers[$questionId] ?? null;
+        if ($status && $status['is_doubtful']) {
+            return $doubtfulColor; 
+        }
+        if ($status && $status['answer_id'] !== null) {
+            return $answeredColor; 
+        }
+
+        return $unansweredColor; 
     }
 
     public function render()
     {
         return view('livewire.customers.tryout-worksheet')
-            ->layout('layouts.blank');
+                    ->layout('layouts.blank', ['title' => $this->title]);
     }
 }
