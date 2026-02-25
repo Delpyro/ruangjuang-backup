@@ -1,54 +1,42 @@
 <div class="flex flex-col h-screen"
     x-cloak
     x-data="{
-        currentIndex: 0,
-        questions: @js($allQuestions),
-        savedAnswers: @entangle('userAnswers').live, {{-- Data dari server --}}
-        localSelections: {}, {{-- State lokal untuk UI --}}
+        currentIndex: @entangle('currentIndex'),
+        questionIds: @js($questionIds),
+        savedAnswers: @entangle('questionStatus').live, {{-- Hanya bawa ID & status --}}
+        localAnswerId: null,
+        localIsDoubtful: false,
         isSaving: false,
         showSidebar: false,
 
         init() {
-            this.syncAllLocalWithDB();
+            this.syncLocalWithServer();
             this.initializeTimer();
-        },
 
-        {{-- Sinkronisasi state lokal dengan data DB saat pertama kali load --}}
-        syncAllLocalWithDB() {
-            Object.keys(this.savedAnswers).forEach(qId => {
-                this.localSelections[qId] = {
-                    answer_id: this.savedAnswers[qId].answer_id,
-                    is_doubtful: this.savedAnswers[qId].is_doubtful
-                };
+            {{-- Watcher: Setiap pindah nomor soal, update pilihan radio di layar --}}
+            $watch('currentIndex', () => {
+                this.syncLocalWithServer();
             });
         },
 
-        get currentQuestion() {
-            return this.questions[this.currentIndex];
+        syncLocalWithServer() {
+            let qId = this.questionIds[this.currentIndex];
+            let data = this.savedAnswers[qId] || {};
+            this.localAnswerId = data.selected_id || null;
+            this.localIsDoubtful = data.is_doubtful || false;
         },
 
-        {{-- Reset state jika user membatalkan pilihan --}}
-        resetCurrentSelection() {
-            let qId = this.currentQuestion.id;
-            let dbData = this.savedAnswers[qId];
-            this.localSelections[qId] = {
-                answer_id: dbData ? dbData.answer_id : null,
-                is_doubtful: dbData ? dbData.is_doubtful : false
-            };
-        },
-
-        {{-- Logika Warna Sidebar --}}
         getNavClass(index) {
-            let qId = this.questions[index].id;
+            let qId = this.questionIds[index];
             let dbData = this.savedAnswers[qId];
             let baseClass = 'w-full h-10 rounded text-white font-semibold flex items-center justify-center text-sm hover:opacity-90 transition-all duration-150 ';
             
             if (dbData?.is_doubtful) {
-                baseClass += 'bg-[#F9A825] '; // Oranye (Ragu-ragu)
-            } else if (dbData?.answer_id) {
-                baseClass += 'bg-[#16a34a] '; // Hijau (Terjawab)
+                baseClass += 'bg-[#F9A825] '; {{-- Oranye (Ragu-ragu) --}}
+            } else if (dbData?.answered) {
+                baseClass += 'bg-[#16a34a] '; {{-- Hijau (Terjawab) --}}
             } else {
-                baseClass += 'bg-[#dc2626] '; // Merah (Belum)
+                baseClass += 'bg-[#dc2626] '; {{-- Merah (Belum) --}}
             }
 
             if (this.currentIndex === index) {
@@ -58,60 +46,31 @@
             return baseClass;
         },
 
-        selectOption(ansId) {
-            let qId = this.currentQuestion.id;
-            let doubtful = this.localSelections[qId]?.is_doubtful || false;
-            this.localSelections[qId] = { answer_id: ansId, is_doubtful: doubtful };
-        },
-
-        {{-- FIX: Memastikan status ragu terupdate meski belum pilih jawaban --}}
-        toggleDoubtfulLocal() {
-            let qId = this.currentQuestion.id;
-            let current = this.localSelections[qId] || { answer_id: null, is_doubtful: false };
-            
-            this.localSelections[qId] = { 
-                answer_id: current.answer_id, 
-                is_doubtful: !current.is_doubtful 
-            };
-        },
-
-        {{-- FIX: Menghapus pengecekan answer_id !== null agar status ragu tetap tersimpan --}}
         async saveToDatabase() {
-            let qId = this.currentQuestion.id;
-            let selection = this.localSelections[qId];
-
-            if (selection) {
-                this.isSaving = true;
-                try {
-                    // Mengirim ke Livewire Controller
-                    await $wire.saveAnswer(qId, selection.answer_id, selection.is_doubtful);
-                } catch (e) {
-                    console.error('Gagal menyimpan:', e);
-                } finally {
-                    this.isSaving = false;
-                }
+            this.isSaving = true;
+            try {
+                await $wire.saveAnswer(this.localAnswerId, this.localIsDoubtful);
+            } catch (e) {
+                console.error('Gagal menyimpan:', e);
+            } finally {
+                this.isSaving = false;
             }
         },
 
         async saveAndNext() {
             await this.saveToDatabase();
-            if (this.currentIndex < this.questions.length - 1) {
-                this.currentIndex++;
-                this.scrollToTop();
-            }
+            this.scrollToTop();
         },
 
-        prev() {
-            this.resetCurrentSelection();
+        async prev() {
             if (this.currentIndex > 0) {
-                this.currentIndex--;
+                await $wire.goToQuestion(this.currentIndex - 1);
                 this.scrollToTop();
             }
         },
 
-        goTo(index) {
-            this.resetCurrentSelection();
-            this.currentIndex = index;
+        async goTo(index) {
+            await $wire.goToQuestion(index);
             if (window.innerWidth < 768) this.showSidebar = false;
             this.scrollToTop();
         },
@@ -175,11 +134,12 @@
             </div>
 
             <div class="grid grid-cols-5 gap-2">
-                <template x-for="(q, index) in questions" :key="q.id">
-                    <button @click="goTo(index)"
-                            :class="getNavClass(index)"
-                            x-text="index + 1"></button>
-                </template>
+                @foreach($questionIds as $index => $id)
+                    <button @click="goTo({{ $index }})"
+                            :class="getNavClass({{ $index }})">
+                        {{ $index + 1 }}
+                    </button>
+                @endforeach
             </div>
         </div>
 
@@ -208,43 +168,48 @@
 
                 {{-- Kategori --}}
                 <div class="bg-[#2563EA] text-white p-4 rounded-lg mb-4">
-                    <h4 class="font-bold text-lg uppercase" x-text="currentQuestion.sub_category?.name || 'Kategori'"></h4>
+                    <h4 class="font-bold text-lg uppercase">
+                        {{ $currentQuestion->subCategory->name ?? 'Kategori' }}
+                    </h4>
                 </div>
 
                 {{-- Wrapper Soal --}}
-                <div class="p-0 bg-gray-50 w-full" wire:ignore>
+                <div class="p-0 bg-gray-50 w-full">
 
                     {{-- Teks Soal --}}
                     <div class="mb-6 text-gray-800 text-base md:text-lg tinymce-content">
-                        <span class="float-left mr-2 font-bold" x-text="(currentIndex + 1) + '.'"></span>
-                        <div class="overflow-x-auto" x-html="currentQuestion.question"></div>
+                        <span class="float-left mr-2 font-bold">{{ $currentIndex + 1 }}.</span>
+                        <div class="overflow-x-auto">
+                            {!! $currentQuestion->question !!}
+                        </div>
                     </div>
 
                     {{-- Gambar Soal --}}
-                    <template x-if="currentQuestion.image">
+                    @if($currentQuestion->image)
                         <div class="my-4 p-2 border rounded-md bg-white shadow-sm">
-                            <img :src="'/storage/' + currentQuestion.image" class="max-w-full h-auto rounded-md mx-auto">
+                            <img src="{{ asset('storage/' . $currentQuestion->image) }}" class="max-w-full h-auto rounded-md mx-auto">
                         </div>
-                    </template>
+                    @endif
 
                     {{-- Pilihan Jawaban --}}
                     <div class="space-y-2 text-gray-700">
-                        <template x-for="ans in currentQuestion.answers" :key="ans.id">
+                        @foreach($currentQuestion->answers as $ans)
                             <label class="group flex items-start space-x-3 cursor-pointer p-3 rounded-lg border border-transparent hover:bg-gray-100 transition-colors duration-150 w-full"
-                                :class="localSelections[currentQuestion.id]?.answer_id == ans.id ? 'border-[#2563EA] bg-blue-50' : ''">
+                                :class="localAnswerId == {{ $ans->id }} ? 'border-[#2563EA] bg-blue-50' : ''">
                                 
                                 <input type="radio"
-                                    :name="'jawaban_' + currentQuestion.id"
-                                    :value="ans.id"
-                                    :checked="localSelections[currentQuestion.id]?.answer_id == ans.id"
-                                    @change="selectOption(ans.id)"
+                                    name="jawaban"
+                                    value="{{ $ans->id }}"
+                                    x-model="localAnswerId"
                                     class="radio-custom-blue flex-shrink-0 mt-1">
 
                                 <div class="flex-1 min-w-0 text-base md:text-lg text-gray-800 tinymce-content">
-                                    <div class="prose max-w-none break-words" x-html="ans.answer"></div>
+                                    <div class="prose max-w-none break-words">
+                                        {!! $ans->answer !!}
+                                    </div>
                                 </div>
                             </label>
-                        </template>
+                        @endforeach
                     </div>
 
                     {{-- TOMBOL NAVIGASI --}}
@@ -262,14 +227,13 @@
                         <div class="flex-none md:w-auto flex justify-center md:justify-start md:order-2">
                             <label class="flex flex-col md:flex-row items-center gap-1 md:gap-2 cursor-pointer px-1">
                                 <input type="checkbox"
-                                    :checked="localSelections[currentQuestion.id]?.is_doubtful"
-                                    @change="toggleDoubtfulLocal()"
+                                    x-model="localIsDoubtful"
                                     class="text-ragu-ragu w-5 h-5 border-ragu-ragu rounded focus:ring-ragu-ragu">
                                 <span class="text-gray-700 font-medium text-[10px] md:text-sm">Ragu-ragu</span>
                             </label>
                         </div>
 
-                        <template x-if="currentIndex < questions.length - 1">
+                        @if($currentIndex < $totalQuestions - 1)
                             <button @click="saveAndNext()"
                                     :disabled="isSaving"
                                     class="flex-1 md:flex-none md:w-auto bg-[#2563EA] hover:bg-[#1a47b3] text-white font-semibold px-2 py-2 md:px-4 rounded-lg shadow-md h-10 md:order-3
@@ -279,15 +243,13 @@
                                     <svg class="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                 </span>
                             </button>
-                        </template>
-
-                        <template x-if="currentIndex === questions.length - 1">
+                        @else
                             <button @click="await saveToDatabase(); $dispatch('show-finish-alert')"
                                     class="flex-1 md:flex-none md:w-auto bg-[#EF4444] hover:bg-[#B91C1C] text-white font-semibold px-2 py-2 md:px-4 rounded-lg shadow-md h-10 md:order-3
                                             flex items-center justify-center gap-1 text-sm md:text-base">
                                 Kumpulkan
                             </button>
-                        </template>
+                        @endif
                     </div>
                 </div> 
             </div>
@@ -332,6 +294,7 @@
 @endpush
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     window.addEventListener('show-finish-alert', () => {
         Swal.fire({
