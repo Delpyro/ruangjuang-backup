@@ -428,7 +428,7 @@
 
                             <div class="flex items-baseline gap-2 mb-6">
                                 @if($item->discount && $item->discount > 0)
-                                    <span class="text-gray-400 font-semibold text-base line-through">Rp {{ number_format($item->price + $item->discount, 0, ',', '.') }}</span>
+                                    <span class="text-red-600 italic font-semibold text-base line-through">Rp {{ number_format($item->price + $item->discount, 0, ',', '.') }}</span>
                                 @endif
                                 <span class="text-2xl font-bold text-gray-900">Rp {{ number_format($item->price, 0, ',', '.') }}</span>
                             </div>
