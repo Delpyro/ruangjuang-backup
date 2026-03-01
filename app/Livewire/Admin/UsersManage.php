@@ -14,6 +14,9 @@ class UsersManage extends Component
 {
     use WithPagination, WithFileUploads;
 
+    // Menentukan tema pagination menjadi Tailwind CSS
+    protected $paginationTheme = 'tailwind';
+
     public $name, $slug, $email, $phone_number, $role = 'user', $status = 'active', $is_active = true, $image, $password;
     public $userId;
     public $isEdit = false;

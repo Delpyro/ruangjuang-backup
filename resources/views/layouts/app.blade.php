@@ -19,7 +19,7 @@
     <style>
         /* FIX: MENCEGAH SCROLLBAR HORIZONTAL PADA MOBILE */
         html, body {
-            overflow-x: hidden; 
+            overflow-x: clip; 
         }
         /* Helper untuk top-24 jika tailwind belum compile class ini (96px) */
         .top-24 { top: 6rem; } 

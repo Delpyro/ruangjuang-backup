@@ -98,7 +98,7 @@
                             <i class="fas fa-arrow-right"></i>
                         </a>
                         <a href="#promo" class="px-8 py-4 bg-white/10 backdrop-blur-md border border-white/10 text-white rounded-full font-semibold text-lg hover:bg-white/20 transition-colors text-center">
-                            Lihat Program
+                            Lihat Promo Special
                         </a>
                     </div>
                 </div>
@@ -287,7 +287,7 @@
                         </div>
                     </div>
                     <p class="text-gray-600 italic text-justify">
-                        "Alasan ikut try out karena... Ruang Juang se worth it itu asli real no gimmick², kebetulan saya ikut kelas TWK di RJ ini bagus banget ganyangka bisa sebagus itu penjelasannya yang rapi dan mudah difahami, ngerangkul peserta buat ikut aktif berdiskusi dan 1 lagi soal² TWK di RJ emang bagus banget buat belajar lebih terarah dan tepat tidak melenceng ahh pokoknya nyesel ga tau dari taun pertama ??"
+                        "Alasan ikut try out karena... Ruang Juang se worth it itu asli real no gimmickï¿½, kebetulan saya ikut kelas TWK di RJ ini bagus banget ganyangka bisa sebagus itu penjelasannya yang rapi dan mudah difahami, ngerangkul peserta buat ikut aktif berdiskusi dan 1 lagi soalï¿½ TWK di RJ emang bagus banget buat belajar lebih terarah dan tepat tidak melenceng ahh pokoknya nyesel ga tau dari taun pertama ??"
                     </p>
                 </div>
             </div>
@@ -343,70 +343,110 @@
         </div>
     </section>
 
-    <section id="promo" class="py-20 bg-gray-50">
-        <div class="container mx-auto px-4">
-            <div class="text-center mb-16" data-aos="fade-up">
-                <h2 class="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
-                    Promo Spesial
+{{-- ========================================================================= --}}
+    {{-- BAGIAN PROMO TERLARIS --}}
+    {{-- ========================================================================= --}}
+    <section id="promo" class="py-20 bg-white">
+        <div class="container mx-auto px-4 max-w-7xl">
+            <div class="text-center mb-12" data-aos="fade-up">
+                <span class="text-primary font-semibold tracking-wider uppercase text-sm mb-2 block">Penawaran Spesial</span>
+                <h2 class="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+                    Promo Terlaris
                 </h2>
-                <p class="text-lg text-gray-600 max-w-3xl mx-auto">
-                    Lihat paket tryout terbaik dengan diskon terbesar yang kami tawarkan. Amankan paketmu sekarang!
+                <p class="text-lg text-gray-500 max-w-2xl mx-auto">
+                    Pilih paket Try Out dan Bundle terbaik dengan harga spesial. Mulai persiapanmu sekarang sebelum kehabisan!
                 </p>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                @forelse ($tryouts as $tryout)
-                    <div class="bg-white rounded-xl shadow-xl flex flex-col transform transition-all duration-300 hover:shadow-green-300 hover:shadow-2xl hover:-translate-y-0.5 relative group border border-gray-100 overflow-hidden" 
-                        data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
-                        <div class="p-6 flex flex-col flex-grow">
-                            @if ($tryout->discount_percentage > 0)
-                            <div class="mb-3">
-                                <span class="bg-green-600 text-white text-sm font-bold py-1 px-3 rounded-md shadow-md">
-                                    DISKON {{ $tryout->discount_percentage }}%
-                                </span>
+            {{-- 
+                LOGIKA CENTERING GRID
+                Cek jumlah promo yang ada, lalu sesuaikan class Tailwind-nya.
+            --}}
+            @php
+                $promoCount = $promos->count();
+                $gridClasses = 'grid-cols-1';
+                
+                if ($promoCount === 1) {
+                    // Jika 1 card: Lebar maksimal sedang, ditaruh di tengah
+                    $gridClasses .= ' max-w-md mx-auto';
+                } elseif ($promoCount === 2) {
+                    // Jika 2 card: Jadi 2 kolom, lebar maksimal disesuaikan, ditaruh di tengah
+                    $gridClasses .= ' md:grid-cols-2 max-w-4xl mx-auto';
+                } else {
+                    // Jika 3 atau lebih: Kembali ke grid normal (penuh)
+                    $gridClasses .= ' md:grid-cols-2 lg:grid-cols-3';
+                }
+            @endphp
+
+            <div class="grid {{ $gridClasses }} gap-8">
+                @forelse ($promos as $promo)
+                    @php
+                        $item = $promo->promoable;
+                        if(!$item) continue; 
+                        
+                        $isTryout = $promo->promoable_type === 'App\Models\Tryout';
+                        
+                        $paymentRoute = $isTryout 
+                            ? route('tryout.payment', ['tryout_slug' => $item->slug]) 
+                            : route('bundle.payment', ['bundle_slug' => $item->slug]);
+                    @endphp
+
+                    <div class="group relative bg-white rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 transition-all duration-300 hover:-translate-y-1 overflow-hidden" data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
+                        @if($loop->first)
+                            <div class="absolute top-4 right-4 bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1 rounded-full z-10">
+                                Best Seller
                             </div>
+                        @endif
+
+                        <div class="p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium {{ $isTryout ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700' }}">
+                                    <i class="{{ $isTryout ? 'fas fa-file-alt' : 'fas fa-layer-group' }} mr-1.5"></i>
+                                    {{ $isTryout ? 'Try Out' : 'Bundle' }}
+                                </span>
+                                @if($isTryout && $item->is_hots)
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700">
+                                        <i class="fas fa-fire mr-1.5"></i> HOTS
+                                    </span>
+                                @endif
+                            </div>
+
+                            <h3 class="font-bold text-xl text-gray-900 mb-3 line-clamp-2 group-hover:text-primary transition-colors">
+                                {{ $item->title }}
+                            </h3>
+
+                            @if ($item->discount_percentage > 0)
+                                <div class="inline-flex items-center bg-green-50 text-green-700 text-sm font-medium px-3 py-1 rounded-full mb-4">
+                                    <i class="fas fa-tag mr-1"></i>
+                                    Hemat Rp {{ $item->formatted_discount }}
+                                </div>
+                            @else
+                                <div class="inline-flex items-center bg-gray-50 text-gray-600 text-sm font-medium px-3 py-1 rounded-full mb-4">
+                                    Paket Reguler
+                                </div>
                             @endif
-                            <div class="min-h-[50px]"> 
-                                <h3 class="font-bold text-lg text-gray-800 leading-tight line-clamp-2">
-                                    {{ $tryout->title }}
-                                </h3>
-                            </div>
-                            <div class="flex flex-wrap items-center gap-2 mb-6 mt-1">
-                                @if($tryout->discount_percentage > 0)
-                                    <span class="bg-green-100 text-green-700 px-4 py-1.5 rounded-full text-sm font-medium">
-                                        Hemat Rp {{ $tryout->formatted_discount }}
-                                    </span>
+
+                            <div class="flex items-baseline gap-2 mb-6">
+                                @if($item->discount && $item->discount > 0)
+                                    <span class="text-gray-400 font-semibold text-base line-through">Rp {{ number_format($item->price + $item->discount, 0, ',', '.') }}</span>
                                 @endif
-                                @if($tryout->is_hots)
-                                    <span class="bg-red-500 text-white px-4 py-1.5 rounded-full text-sm font-bold">
-                                        HOTS
-                                    </span>
-                                @endif
+                                <span class="text-2xl font-bold text-gray-900">Rp {{ number_format($item->price, 0, ',', '.') }}</span>
                             </div>
-                            <div class="flex flex-col items-start mb-6 mt-auto">
-                                @if($tryout->discount && $tryout->discount > 0)
-                                    <span class="text-gray-500 text-base line-through mb-1">
-                                        Rp {{ number_format($tryout->price + $tryout->discount, 0, ',', '.') }}
-                                    </span>
-                                @endif
-                                <span class="text-3xl font-extrabold text-green-700 block">
-                                    Rp {{ number_format($tryout->price, 0, ',', '.') }}
-                                </span>
-                            </div>
-                            <div>
-                                <a href="{{ route('tryout.payment', ['tryout_slug' => $tryout->slug]) }}"
-                                    wire:navigate
-                                    class="flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg shadow-md w-full transition-colors duration-200">
-                                    <i class="fa-solid fa-money-bill-wave mr-2"></i> Beli Sekarang
-                                </a>
-                            </div>
+
+                            <a href="{{ $paymentRoute }}" wire:navigate
+                            class="flex items-center justify-center w-full py-3 px-4 rounded-xl bg-primary text-white font-semibold hover:bg-primary-dark transition-all duration-200 transform group-hover:scale-[1.02] shadow-md shadow-primary/20">
+                                Beli Sekarang
+                                <i class="fas fa-arrow-right ml-2 text-sm transition-transform group-hover:translate-x-1"></i>
+                            </a>
                         </div>
                     </div>
                 @empty
-                    <div class="md:col-span-2 lg:col-span-4 text-center py-12" data-aos="fade-up">
-                        <i class="fas fa-sad-tear text-gray-400 text-6xl mb-4"></i>
-                        <h3 class="text-2xl font-semibold text-gray-700 mb-2">Belum Ada Promo</h3>
-                        <p class="text-gray-500">Saat ini belum ada promo tryout yang tersedia. Silakan cek kembali nanti!</p>
+                    <div class="col-span-full text-center py-16 px-4 bg-gray-50 rounded-2xl" data-aos="fade-up">
+                        <div class="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <i class="fas fa-box-open text-primary text-3xl"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">Promo Sedang Disiapkan</h3>
+                        <p class="text-gray-600 max-w-md mx-auto">Tim kami sedang meracik penawaran terbaik untukmu. Pantau terus halaman ini agar tidak ketinggalan!</p>
                     </div>
                 @endforelse
             </div>
@@ -628,7 +668,7 @@
                         <div class="bg-green-100 p-4 rounded-full mb-3 transition-colors duration-300 group-hover:bg-green-200">
                             <i class="fab fa-whatsapp text-green-600 text-4xl"></i>
                         </div>
-                        <span class="font-semibold text-gray-700 text-center text-sm">Grup Komunitas WA</span> 
+                        <span class="font-semibold text-gray-700 text-center text-sm">Grup Ruang Juang</span> 
                     </a>
 
                     <a href="https://wa.me/6285769163218" target="_blank" class="flex flex-col items-center group w-1/3 md:w-auto p-2">

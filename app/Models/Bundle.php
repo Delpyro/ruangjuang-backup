@@ -65,6 +65,10 @@ class Bundle extends Model
     }
 
 
+    public function promo()
+    {
+        return $this->morphOne(Promo::class, 'promoable');
+    }
     /**
      * User yang telah membeli bundle ini. (Relasi Pivot Resmi)
      * Relasi ini digunakan untuk menandai kepemilikan di tabel pivot 'bundle_user'.

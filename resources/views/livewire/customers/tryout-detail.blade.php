@@ -217,8 +217,7 @@
             </div>
             
             {{-- KOLOM KANAN: STICKY SIDEBAR (TOMBOL AKSI) --}}
-            <div class="lg:col-span-1 p-0 order-1 lg:order-2 sticky top-24 self-start">
-                
+            <div class="lg:col-span-1 p-0 order-1 lg:order-2 sticky top-32 self-start">                 
                 <div class="bg-gradient-to-b from-white to-blue-50 rounded-2xl shadow-2xl p-8 border border-gray-200 transition-all duration-500 hover:shadow-2xl relative overflow-hidden">
                     <div class="absolute top-0 right-0 w-20 h-20 bg-blue-100 rounded-full -mr-6 -mt-6 opacity-40"></div>
                     
@@ -302,8 +301,8 @@
                 </div>
                 
                 <div class="text-center mt-6">
-                    <a href="{{ route('tryout.index') }}" wire:navigate class="text-gray-600 hover:text-primary transition-all duration-200 text-sm flex items-center justify-center group">
-                        <i class="fas fa-arrow-left mr-2 group-hover:-translate-x-1 transition-transform duration-200"></i> 
+                    <a href="{{ route('tryout.index') }}" wire:navigate class="inline-flex items-center justify-center px-6 py-3 text-sm font-bold text-gray-700 bg-white border-[3px] border-gray-500 rounded-xl shadow-sm hover:bg-blue-50 hover:text-primary hover:border-primary transition-all duration-300 group">
+                        <i class="fas fa-arrow-left mr-2 group-hover:-translate-x-1 transition-transform duration-300"></i> 
                         Kembali ke Daftar Try Out
                     </a>
                 </div>

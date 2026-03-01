@@ -77,8 +77,8 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Durasi</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">question</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
@@ -124,6 +124,14 @@
                                     </span>
                                 @endif
                             </td>
+                            <td>
+                                {{-- Link ke halaman pertanyaan tryout --}}
+                                <a href="{{ route('admin.tryouts.questions', $tryout->id) }}" style="margin: auto"
+                                    class="text-green-600 hover:text-green-900 bg-green-50 hover:bg-green-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm gap-2 w-fit">
+                                    <i class="fa-solid fa-square-plus w-4 h-4"></i>
+                                    <span>Soal</span>
+                                </a>
+                            </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div class="flex space-x-2">
                                     @if(!$tryout->trashed())
@@ -158,23 +166,14 @@
                                             {{-- Font Awesome: fa-rotate-left --}}
                                             <i class="fa-solid fa-rotate-left w-4 h-4 mr-1"></i> Restore
                                         </button>
-                                        <button
+                                        {{-- <button
                                             wire:click="forceDelete({{ $tryout->id }})"
                                             onclick="return confirm('Yakin ingin menghapus permanen? Data tidak dapat dikembalikan.')"
                                             class="text-red-700 hover:text-red-900 bg-red-100 hover:bg-red-200 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm">
-                                            {{-- Font Awesome: fa-trash-can-xmark --}}
                                             <i class="fa-solid fa-trash-can-xmark w-4 h-4 mr-1"></i> Hapus Permanen
-                                        </button>
+                                        </button> --}}
                                     @endif
                                 </div>
-                            </td>
-                            <td>
-                                {{-- Link ke halaman pertanyaan tryout --}}
-                                <a href="{{ route('admin.tryouts.questions', $tryout->id) }}"
-                                    class="text-green-600 hover:text-green-900 bg-green-50 hover:bg-green-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm">
-                                    {{-- Font Awesome: fa-square-plus --}}
-                                    <i class="fa-solid fa-square-plus w-4 h-4 mr-1"></i> Soal
-                                </a>
                             </td>
                         </tr>
                     @empty

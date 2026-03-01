@@ -28,6 +28,7 @@ use App\Livewire\Admin\QuestionCategoriesManage;
 use App\Livewire\Customers\TryoutDiscussionPage;
 use App\Http\Controllers\Admin\TinyMceController;
 use App\Http\Controllers\PaymentCallbackController;
+use App\Livewire\Admin\PromoManage;
 use App\Livewire\Admin\QuestionSubCategoriesManage;
 use App\Livewire\Customers\TryoutDiscussionWorksheet;
 use App\Livewire\Customers\Dashboard as CustomersDashboard;
@@ -211,6 +212,7 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
 
     // Reviews
     Route::get('reviews', ReviewsManage::class)->name('reviews.index');
+    Route::get('promo', PromoManage::class)->name('promo.index');
     
     // Transaction Management BARU
     Route::prefix('transactions')->name('transactions.')->group(function () {

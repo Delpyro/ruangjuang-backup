@@ -26,7 +26,7 @@
         </div>
 
         {{-- Tabs untuk filter status --}}
-        <div class="mb-4 flex border-b border-gray-200">
+        <div class="mb-4 flex flex-wrap border-b border-gray-200 gap-y-2">
             <button
                 wire:click="$set('filterStatus', 'all')"
                 class="py-2 px-4 font-medium text-sm border-b-2 transition-colors duration-200 {{ $filterStatus == 'all' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
@@ -45,7 +45,21 @@
             <button
                 wire:click="$set('filterStatus', 'failed')"
                 class="py-2 px-4 font-medium text-sm border-b-2 transition-colors duration-200 {{ $filterStatus == 'failed' ? 'border-red-500 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
-                <i class="fa-solid fa-times-circle w-4 h-4 mr-1 inline"></i> Failed / Expired
+                <i class="fa-solid fa-times-circle w-4 h-4 mr-1 inline"></i> Failed
+            </button>
+            
+            {{-- Tab Tambahan: Berbayar dan Gratis --}}
+            <div class="w-px h-6 bg-gray-300 mx-2 self-center hidden sm:block"></div>
+            
+            <button
+                wire:click="$set('filterStatus', 'berbayar')"
+                class="py-2 px-4 font-medium text-sm border-b-2 transition-colors duration-200 {{ $filterStatus == 'berbayar' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
+                <i class="fa-solid fa-money-bill-wave w-4 h-4 mr-1 inline"></i> Berbayar
+            </button>
+            <button
+                wire:click="$set('filterStatus', 'gratis')"
+                class="py-2 px-4 font-medium text-sm border-b-2 transition-colors duration-200 {{ $filterStatus == 'gratis' ? 'border-teal-500 text-teal-600' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
+                <i class="fa-solid fa-gift w-4 h-4 mr-1 inline"></i> Gratis
             </button>
         </div>
 
@@ -73,7 +87,6 @@
             </div>
         </div>
         {{-- Akhir Search & Filter Bulan --}}
-
 
         {{-- Flash messages --}}
         @if (session()->has('success'))
@@ -104,11 +117,7 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                        
-                        {{-- [!code ++] Tambahkan Kolom Pembayaran --}}
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Metode Bayar</th>
-                        {{-- [!code --] --}}
-                        
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                     </tr>
@@ -118,7 +127,6 @@
                         <tr class="hover:bg-gray-50 transition-colors duration-150" wire:key="trx-{{ $transaction->id }}">
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="font-medium text-sm text-gray-900">{{ $transaction->order_id }}</span>
-                                {{-- [!code --] <span class="block text-xs text-gray-500">{{ $transaction->payment_method }}</span> --}}
                                 <span class="block text-xs text-gray-500">{{ $transaction->created_at->isoFormat('D MMM YYYY, HH:mm') }}</span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
@@ -133,14 +141,10 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">
                                 {{ $transaction->formatted_amount }}
                             </td>
-                            
-                            {{-- [!code ++] Kolom Pembayaran Baru --}}
                             <td class="px-6 py-4 whitespace-nowrap text-sm">
                                 <span class="font-medium text-gray-800">{{ $transaction->payment_method ?? '-' }}</span>
                                 <span class="block text-xs text-gray-500">({{ $transaction->payment_type ?? 'N/A' }})</span>
                             </td>
-                            {{-- [!code --] --}}
-
                             <td class="px-6 py-4 whitespace-nowrap">
                                 @if ($transaction->isSuccess())
                                     <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
@@ -197,7 +201,7 @@
         </div>
     </div>
 
-    {{-- Modal Detail Transaksi (Sama seperti sebelumnya) --}}
+    {{-- Modal Detail Transaksi --}}
     @if($showModal && $selectedTransaction)
         <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center" aria-labelledby="modal-title" role="dialog" aria-modal="true">
              <div class="fixed inset-0 bg-gray-500 bg-opacity-20 transition-opacity backdrop-blur-sm" aria-hidden="true" wire:click="closeModal"></div>

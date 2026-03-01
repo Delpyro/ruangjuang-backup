@@ -14,7 +14,7 @@ use App\Models\Bundle;
 use Livewire\Attributes\Title;
 
 #[Title('Detail Transaksi Item')]
-class TransactionsDetail extends Component // [!PERUBAHAN NAMA KELAS!]
+class TransactionsDetail extends Component 
 {
     use WithPagination;
 
@@ -102,6 +102,12 @@ class TransactionsDetail extends Component // [!PERUBAHAN NAMA KELAS!]
                     $query->pending();
                 } elseif ($this->filterStatus === 'failed') {
                     $query->failed();
+                } elseif ($this->filterStatus === 'gratis') {
+                    // Filter khusus transaksi Gratis
+                    $query->where('amount', '<=', 0); 
+                } elseif ($this->filterStatus === 'berbayar') {
+                    // Filter khusus transaksi Berbayar
+                    $query->where('amount', '>', 0);
                 }
             })
             ->when($this->filterMonth && $this->filterMonth !== 'all', function ($query) {
@@ -150,7 +156,7 @@ class TransactionsDetail extends Component // [!PERUBAHAN NAMA KELAS!]
         // 1. Ambil data dengan query yang sama (tanpa pagination)
         $transactions = $this->getBaseTransactionsQuery()->get();
         
-        // [!code ++] 2. Tentukan nama file secara eksplisit (MEMPERBAIKI UNDEFINED VARIABLE)
+        // 2. Tentukan nama file secara eksplisit
         $fileName = 'transactions_' . $this->itemType . '_' . $this->itemModel->id;
         
         if ($this->filterStatus !== 'all') {
@@ -160,7 +166,6 @@ class TransactionsDetail extends Component // [!PERUBAHAN NAMA KELAS!]
             $fileName .= '_' . $this->filterMonth;
         }
         $fileName .= '_' . Carbon::now()->format('Ymd_His') . '.pdf';
-        // [!code --]
 
         // 3. Muat view yang didedikasikan untuk PDF dengan data transaksi
         $pdf = PDF::loadView('pdf.transactions-report', [
@@ -173,7 +178,7 @@ class TransactionsDetail extends Component // [!PERUBAHAN NAMA KELAS!]
         // 4. Download PDF
         return response()->streamDownload(function () use ($pdf) {
             echo $pdf->stream();
-        }, $fileName); // $fileName sekarang terdefinisi
+        }, $fileName); 
     }
     
     public function openModal($id)

@@ -4,48 +4,40 @@ namespace App\Livewire\Customers;
 
 use Livewire\Component;
 use Illuminate\Support\Facades\Auth;
-use App\Models\Tryout; 
-use Illuminate\Support\Facades\DB; 
+use App\Models\Promo;
 
 class Dashboard extends Component
 {
     public function render()
     {
-        // Ambil 4 tryout dengan persentase diskon tertinggi.
-        $tryouts = Tryout::where('is_active', true)
-                         ->whereNotNull('discount')
-                         ->where('discount', '>', 0)
-                         // Memastikan pembagi (harga awal) tidak nol
-                         ->whereRaw('(price + discount) > 0') 
-                         
-                         // Hitung Persentase Diskon: (discount / (price + discount)) * 100
-                         ->select('tryouts.*', 
-                            DB::raw('(discount / (price + discount) * 100) AS discount_percent_calculated')
-                         )
-                         
-                         // Urutkan berdasarkan persentase diskon (tertinggi ke terendah)
-                         ->orderByDesc('discount_percent_calculated')
-                         ->take(4) 
-                         ->get();
+        // Ambil data promo yang sudah di-set oleh admin (Maksimal 3 sesuai limitasi)
+        $promos = Promo::with('promoable')->get();
 
-        // Tambahkan atribut 'formatted_discount' dan 'discount_percentage'
-        $tryouts->each(function ($tryout) {
-            if ($tryout->discount > 0) {
+        // Format diskon untuk masing-masing item (Tryout/Bundle)
+        foreach ($promos as $promo) {
+            $item = $promo->promoable;
+            
+            if ($item && $item->discount > 0) {
                 // Formatting diskon (jumlah penghematan)
-                $tryout->formatted_discount = number_format($tryout->discount, 0, ',', '.');
+                $item->formatted_discount = number_format($item->discount, 0, ',', '.');
                 
-                // Ambil persentase diskon yang sudah dihitung oleh DB
-                $tryout->discount_percentage = round($tryout->discount_percent_calculated);
-            } else {
-                $tryout->formatted_discount = null;
-                $tryout->discount_percentage = 0;
+                // Hitung Persentase Diskon: (discount / (price + discount)) * 100
+                $originalPrice = $item->price + $item->discount;
+                if ($originalPrice > 0) {
+                    $item->discount_percentage = round(($item->discount / $originalPrice) * 100);
+                } else {
+                    $item->discount_percentage = 0;
+                }
+            } elseif ($item) {
+                $item->formatted_discount = null;
+                $item->discount_percentage = 0;
             }
-        });
+        }
 
         // Melewatkan data ke view
         return view('livewire.customers.dashboard', [
             'isGuest' => Auth::guest(),
-            'tryouts' => $tryouts,
+            'promos' => $promos, // Kirim variabel $promos, bukan lagi $tryouts
         ])->layout('layouts.app');
     }
 }

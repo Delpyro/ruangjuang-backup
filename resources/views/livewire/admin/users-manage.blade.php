@@ -170,10 +170,17 @@
             </table>
         </div>
 
-        {{-- Pagination --}}
-        <div class="mt-4">
-            {{ $users->links() }}
-        </div>
+        {{-- Pagination (Sudah Diperbarui) --}}
+        @if ($users->hasPages())
+            {{-- Pagination --}}
+                <div class="mt-6">
+                    <div class="flex flex-col md:flex-row items-center justify-between gap-4 p-4 bg-gray-50 border border-gray-200 rounded-xl shadow-sm">
+                        <div class="flex-1 flex justify-end">
+                            {{ $users->links() }}
+                        </div>
+                    </div>
+                </div>
+        @endif
     </div>
 
     {{-- Modal Overlay --}}

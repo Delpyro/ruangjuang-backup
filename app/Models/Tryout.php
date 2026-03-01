@@ -75,6 +75,12 @@ class Tryout extends Model
         return $this->hasMany(Question::class, 'id_tryout')->where('is_active', true);
     }
 
+
+    public function promo()
+    {
+        return $this->morphOne(Promo::class, 'promoable');
+    }
+
     /**
      * Relationship dengan user yang telah membeli tryout ini.
      * PERBAIKAN KRITIS: Menggunakan 'id_user' sebagai foreign key di tabel pivot.

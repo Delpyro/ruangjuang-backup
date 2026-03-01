@@ -4,7 +4,6 @@ namespace App\Livewire\Admin;
 
 use Livewire\Component;
 use App\Models\Transaction;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Title;
 
@@ -22,6 +21,10 @@ class TransactionsIndex extends Component
 
     // Properti untuk menyimpan daftar judul item yang seri di posisi tertinggi
     public $topSellerTitles = []; 
+
+    // Properti Global untuk Total Keseluruhan
+    public $totalGlobalFree = 0;
+    public $totalGlobalPaid = 0;
 
     // Query String untuk URL
     protected $queryString = [
@@ -44,9 +47,11 @@ class TransactionsIndex extends Component
     public function loadSummaries()
     {
         $query = Transaction::success();
-        $transactions = $query->with(['tryout:id,title,price', 'bundle:id,title,price'])->get();
+        $transactions = $query->with(['tryout:id,title', 'bundle:id,title'])->get();
 
         $summaries = [];
+        $globalFree = 0;
+        $globalPaid = 0;
 
         foreach ($transactions as $transaction) {
             
@@ -81,10 +86,26 @@ class TransactionsIndex extends Component
                     'type' => $itemType,
                     'title' => $itemTitle,
                     'total_sales' => 0,
+                    'total_free' => 0,
+                    'total_paid' => 0,
                 ];
             }
             
             $summaries[$key]['total_sales'] += 1;
+
+            // --- LOGIKA SKENARIO 2 ---
+            // Cek nominal tagihan dari transaksi. 
+            // UBAH 'amount' di bawah ini sesuaikan dengan nama kolom di tabel transactions kamu 
+            // (contoh: gross_amount, total_price, dll)
+            $transactionTotal = $transaction->amount ?? 0; 
+
+            if ($transactionTotal <= 0) {
+                $summaries[$key]['total_free'] += 1;
+                $globalFree += 1;
+            } else {
+                $summaries[$key]['total_paid'] += 1;
+                $globalPaid += 1;
+            }
         }
 
         // Urutkan: 1. Total Sales (DESC), 2. Title (ASC) sebagai tie-breaker
@@ -95,6 +116,8 @@ class TransactionsIndex extends Component
             ]);
 
         $this->tryoutSummaries = $summaries->values()->all();
+        $this->totalGlobalFree = $globalFree;
+        $this->totalGlobalPaid = $globalPaid;
         
         // SET NILAI PENJUALAN TERTINGGI & DAFTAR JUDUL TERLARIS
         if (!empty($this->tryoutSummaries)) {
@@ -108,7 +131,6 @@ class TransactionsIndex extends Component
                 if ($summary['total_sales'] === $topSales) {
                     $this->topSellerTitles[] = $summary['title'];
                 } else {
-                    // Berhenti setelah total sales menurun (karena sudah diurutkan)
                     break; 
                 }
             }
@@ -120,7 +142,6 @@ class TransactionsIndex extends Component
     
     public function goToDetail($itemType, $itemId)
     {
-        // Fungsi ini dipanggil oleh tombol
         return $this->redirect(route('admin.transactions.detail', [
             'type' => $itemType, 
             'id' => $itemId

@@ -1,6 +1,28 @@
 <div class="container mx-auto px-4 py-6">
-    <h2 class="text-3xl font-bold text-gray-800 mb-6">💰 Ringkasan Transaksi Tryout & Bundle</h2>
+    <h2 class="text-3xl font-bold text-gray-800 mb-6">Ringkasan Transaksi Tryout & Bundle</h2>
     
+    {{-- AREA RINGKASAN GLOBAL GRATIS VS BERBAYAR --}}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg shadow-sm">
+            <div class="flex items-center">
+                <i class="fa-solid fa-money-bill-wave text-blue-500 text-2xl mr-3"></i>
+                <div>
+                    <p class="text-sm font-semibold text-blue-800">Total Transaksi Berbayar</p>
+                    <p class="text-2xl font-bold text-blue-900">{{ number_format($totalGlobalPaid) }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded-lg shadow-sm">
+            <div class="flex items-center">
+                <i class="fa-solid fa-gift text-green-500 text-2xl mr-3"></i>
+                <div>
+                    <p class="text-sm font-semibold text-green-800">Total Transaksi Gratis</p>
+                    <p class="text-2xl font-bold text-green-900">{{ number_format($totalGlobalFree) }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- Tambahkan Input Search --}}
     <div class="mb-6">
         <input
@@ -68,7 +90,7 @@
 
             <div class="relative">
                 
-                {{-- BADGE TERLARIS (muncul di semua item yang seri di posisi teratas) --}}
+                {{-- BADGE TERLARIS --}}
                 @if ($isTopSeller)
                     <div class="absolute -top-3 right-0 z-10">
                         <span class="px-3 py-1 text-xs font-bold text-white bg-red-600 rounded-lg shadow-xl uppercase transform rotate-2">
@@ -77,34 +99,44 @@
                     </div>
                 @endif
                 
-                {{-- KARTU UTAMA: Hapus wire:click agar tidak langsung navigasi --}}
-                <div 
-                    class="bg-white rounded-xl shadow-lg p-6 hover:shadow-2xl transition-all duration-300 cursor-default border-t-8 {{ $borderColor }}"
-                    wire:key="{{ $summary['type'] }}-{{ $summary['id'] }}">
+                {{-- KARTU UTAMA --}}
+                <div class="flex flex-col h-full bg-white rounded-xl shadow-lg p-6 hover:shadow-2xl transition-all duration-300 border-t-8 {{ $borderColor }}"
+                     wire:key="{{ $summary['type'] }}-{{ $summary['id'] }}">
                     
                     <div class="flex justify-between items-start mb-3">
                         <p class="text-xs font-semibold uppercase text-gray-500 tracking-wider">
                             <i class="{{ $iconClass }} mr-1"></i> {{ ucfirst($summary['type']) }}
                         </p>
-                        {{-- HILANGKAN ANGKA PERINGKAT # --}}
                     </div>
 
-                    <h3 class="text-xl font-extrabold text-gray-900 mb-4 line-clamp-2">
+                    <h3 class="text-lg font-extrabold text-gray-900 mb-2 line-clamp-2 flex-grow">
                         {{ $summary['title'] }}
                     </h3>
                     
                     <hr class="my-3 border-gray-100">
 
-                    {{-- Area Utama Angka Terjual --}}
-                    <div class="text-center py-4 bg-gray-50 rounded-lg border border-gray-200">
-                        <p class="text-sm font-medium text-gray-600 mb-1">Total Item Terjual</p>
-                        <p class="text-5xl font-extrabold text-green-700">
+                    {{-- Area Utama Angka Terjual dengan Split --}}
+                    <div class="text-center py-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <p class="text-xs font-medium text-gray-500 mb-1">Total Item Terjual</p>
+                        <p class="text-4xl font-extrabold text-gray-800">
                             {{ number_format($summary['total_sales']) }}
                         </p>
+                        
+                        {{-- Pemisah Gratis vs Berbayar --}}
+                        <div class="flex justify-center items-center gap-4 mt-3 pt-3 border-t border-gray-200 text-sm">
+                            <div class="text-center">
+                                <span class="block text-xs font-semibold text-green-600">Gratis</span>
+                                <span class="font-bold text-gray-700">{{ number_format($summary['total_free']) }}</span>
+                            </div>
+                            <div class="h-6 w-px bg-gray-300"></div>
+                            <div class="text-center">
+                                <span class="block text-xs font-semibold text-blue-600">Berbayar</span>
+                                <span class="font-bold text-gray-700">{{ number_format($summary['total_paid']) }}</span>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="mt-4">
-                        {{-- WIRE:CLICK HANYA ADA DI TOMBOL INI --}}
                         <button wire:click="goToDetail('{{ $summary['type'] }}', {{ $summary['id'] }})"
                                 class="w-full text-center py-2 text-sm font-medium text-white {{ $buttonClass }} rounded-lg transition-colors duration-200 shadow-md">
                             Lihat Detail Transaksi

@@ -197,14 +197,17 @@ class TryoutWorksheet extends Component
                     $ans = $answersByQuestion->get($q->id);
                     
                     if (!isset($summary[$catId])) {
-                        $summary[$catId] = ['score' => 0, 'correct' => 0, 'wrong' => 0, 'empty' => 0, 'total' => 0];
+                        // Bagian ini sudah diganti menggunakan key 'unanswered'
+                        $summary[$catId] = ['score' => 0, 'correct' => 0, 'wrong' => 0, 'unanswered' => 0, 'total' => 0];
                     }
 
                     $summary[$catId]['total']++;
+                    
                     if ($ans && $ans->answer_id) {
                         $summary[$catId]['score'] += $ans->score;
                         // Logika is_correct bisa ditambah jika field tersedia di tabel answers
                     } else {
+                        // Sekarang ini tidak akan error lagi
                         $summary[$catId]['unanswered']++;
                     }
                 }
