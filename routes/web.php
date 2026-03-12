@@ -3,7 +3,7 @@
 use App\Livewire\Admin\UsersManage;
 use Illuminate\Support\Facades\Auth;
 use App\Livewire\Admin\ReviewsManage;
-
+use App\Livewire\Admin\UserAkses;
 use App\Livewire\Customers\RaporPage;
 use Illuminate\Support\Facades\Route;
 use App\Livewire\Customers\BundlePage;
@@ -185,6 +185,10 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
     // Dashboard & User
     Route::get('dashboard', DashboardManage::class)->name('dashboard');
     Route::get('users', UsersManage::class)->name('users');
+    
+    // [BARU] Rute untuk User Akses
+    Route::get('user/akses', UserAkses::class)->name('user.akses'); 
+    Route::get('user/akses/{id}', UserAkses::class)->name('user.akses.detail'); // Jika butuh ID spesifik
     
     // Questions
     Route::get('question-categories', QuestionCategoriesManage::class)->name('question-categories');

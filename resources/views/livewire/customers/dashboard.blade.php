@@ -98,7 +98,7 @@
                             <i class="fas fa-arrow-right"></i>
                         </a>
                         <a href="#promo" class="px-8 py-4 bg-white/10 backdrop-blur-md border border-white/10 text-white rounded-full font-semibold text-lg hover:bg-white/20 transition-colors text-center">
-                            Lihat Promo Special
+                            Lihat Promo Terlaris
                         </a>
                     </div>
                 </div>
@@ -428,9 +428,9 @@
 
                             <div class="flex items-baseline gap-2 mb-6">
                                 @if($item->discount && $item->discount > 0)
-                                    <span class="text-red-600 italic font-semibold text-base line-through">Rp {{ number_format($item->price + $item->discount, 0, ',', '.') }}</span>
+                                    <span class="text-red-600 italic font-semibold text-base line-through">Rp {{ number_format($item->price, 0, ',', '.') }}</span>
                                 @endif
-                                <span class="text-2xl font-bold text-gray-900">Rp {{ number_format($item->price, 0, ',', '.') }}</span>
+                                <span class="text-2xl font-bold text-gray-900">Rp {{ number_format($item->price - $item->discount, 0, ',', '.') }}</span>
                             </div>
 
                             <a href="{{ $paymentRoute }}" wire:navigate

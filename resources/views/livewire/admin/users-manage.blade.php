@@ -4,11 +4,20 @@
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-2xl font-bold text-gray-800">Manajemen Users</h2>
 
-            <button
-                wire:click="openModal(false)"
-                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center">
-                <i class="fa-solid fa-plus w-4 h-4 mr-1"></i> Tambah User
-            </button>
+            <div class="flex items-center gap-3">
+                {{-- Tombol Atur Akses Global --}}
+                <a href="{{ url('/admin/user/akses') }}"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center shadow-sm">
+                    <i class="fa-solid fa-shield-halved w-4 h-4 mr-2"></i> Atur Akses
+                </a>
+
+                {{-- Tombol Tambah User --}}
+                <button
+                    wire:click="openModal(false)"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center shadow-sm">
+                    <i class="fa-solid fa-plus w-4 h-4 mr-1"></i> Tambah User
+                </button>
+            </div>
         </div>
 
         {{-- Tabs untuk filter status --}}
@@ -130,23 +139,33 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div class="flex space-x-2">
                                     @if(!$user->trashed())
+                                        {{-- Tombol Atur Akses (Per User) --}}
+                                        <a href="{{ url('/admin/user/akses/' . $user->id) }}"
+                                            class="text-amber-600 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm" title="Atur Akses User">
+                                            <i class="fa-solid fa-key w-4 h-4 mr-1"></i> Akses
+                                        </a>
+
+                                        {{-- Tombol Edit --}}
                                         <button
                                             wire:click="openModal(true, {{ $user->id }})"
                                             class="text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm">
                                             <i class="fa-solid fa-pen-to-square w-4 h-4 mr-1"></i> Edit
                                         </button>
 
+                                        {{-- Tombol Hapus --}}
                                         <button
                                             wire:click="confirmDelete({{ $user->id }})"
                                             class="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm">
                                             <i class="fa-solid fa-trash-can w-4 h-4 mr-1"></i> Hapus
                                         </button>
                                     @else
+                                        {{-- Tombol Restore --}}
                                         <button
                                             wire:click="restore({{ $user->id }})"
                                             class="text-green-600 hover:text-green-900 bg-green-50 hover:bg-green-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm">
                                             <i class="fa-solid fa-rotate-left w-4 h-4 mr-1"></i> Restore
                                         </button>
+                                        {{-- Tombol Force Delete --}}
                                         <button
                                             wire:click="confirmForceDelete({{ $user->id }})"
                                             class="text-red-700 hover:text-red-900 bg-red-100 hover:bg-red-200 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm">
@@ -170,16 +189,15 @@
             </table>
         </div>
 
-        {{-- Pagination (Sudah Diperbarui) --}}
+        {{-- Pagination --}}
         @if ($users->hasPages())
-            {{-- Pagination --}}
-                <div class="mt-6">
-                    <div class="flex flex-col md:flex-row items-center justify-between gap-4 p-4 bg-gray-50 border border-gray-200 rounded-xl shadow-sm">
-                        <div class="flex-1 flex justify-end">
-                            {{ $users->links() }}
-                        </div>
+            <div class="mt-6">
+                <div class="flex flex-col md:flex-row items-center justify-between gap-4 p-4 bg-gray-50 border border-gray-200 rounded-xl shadow-sm">
+                    <div class="flex-1 flex justify-end">
+                        {{ $users->links() }}
                     </div>
                 </div>
+            </div>
         @endif
     </div>
 

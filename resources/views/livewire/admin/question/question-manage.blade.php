@@ -13,6 +13,13 @@
                         <div class="flex justify-between items-center mb-4">
                             <h2 class="text-lg font-semibold">Soal Nomor {{ $currentQuestionNumber }}</h2>
                             <div class="flex space-x-2">
+                                {{-- Tombol Data Terhapus --}}
+                                <button wire:click="openTrashModal" 
+                                        class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors flex items-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    Data Terhapus
+                                </button>
+                                
                                 <button wire:click="navigateToNewQuestion" 
                                         class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
                                     Soal Baru
@@ -98,7 +105,7 @@
                                         <label for="id_question_sub_category" class="block text-sm font-medium text-gray-700">Sub Kategori <span class="text-red-500">*</span></label>
                                         <select wire:model="id_question_sub_category" 
                                                 id="id_question_sub_category" 
-                                                wire:key="subcategory-{{ $id_question_categories }}" {{-- PERBAIKAN UTAMA: Tambahkan wire:key --}}
+                                                wire:key="subcategory-{{ $id_question_categories }}"
                                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 @if($this->getFieldError('id_question_sub_category')) border-red-300 @endif"
                                                 {{ $availableSubCategories->isEmpty() ? 'disabled' : '' }}>
                                             <option value="">Pilih Sub Kategori</option>
@@ -307,34 +314,31 @@
                         {{-- Navigasi Nomor Soal --}}
                         <div class="grid grid-cols-5 gap-2 mb-4">
                             
-                            @for($i = 1; $i <= $totalQuestions; $i++)
-                                @if($questionItem = $questionsList->get($i-1))
-                                    @php
-                                        $baseClasses = 'w-10 h-10 rounded border transition-colors flex items-center justify-center';
-                                        $stateClasses = '';
-                                
-                                        if ($i == $currentQuestionNumber) {
-                                            // 1. Tombol untuk soal yang sedang aktif (diedit)
-                                            $stateClasses = 'bg-blue-600 text-white border-blue-600';
-                                        } elseif (!$questionItem->is_active) {
-                                            // 2. Tombol untuk soal yang TIDAK aktif (nonaktif)
-                                            $stateClasses = 'bg-red-100 border-red-300 text-red-700 hover:bg-red-200'; 
-                                        } else {
-                                            // 3. Tombol untuk soal lain yang aktif (default)
-                                            $stateClasses = 'bg-gray-100 border-gray-300 hover:bg-blue-500 hover:text-white';
-                                        }
-                                    @endphp
-                                
-                                    <button wire:click="navigateToQuestion({{ $questionItem->id }})"
-                                            class="{{ $baseClasses }} {{ $stateClasses }}">
-                                        {{ $i }}
-                                    </button>
-                                @endif
-                            @endfor
+                            @foreach($questionsList as $index => $questionItem)
+                                @php
+                                    $baseClasses = 'w-10 h-10 rounded border transition-colors flex items-center justify-center';
+                                    $stateClasses = '';
+                            
+                                    if ($index + 1 == $currentQuestionNumber) {
+                                        $stateClasses = 'bg-blue-600 text-white border-blue-600';
+                                    } elseif (!$questionItem->is_active) {
+                                        $stateClasses = 'bg-red-100 border-red-300 text-red-700 hover:bg-red-200'; 
+                                    } else {
+                                        $stateClasses = 'bg-gray-100 border-gray-300 hover:bg-blue-500 hover:text-white';
+                                    }
+                                @endphp
+                            
+                                <button wire:key="nav-btn-{{ $questionItem->id }}" 
+                                        wire:click="navigateToQuestion({{ $questionItem->id }})"
+                                        class="{{ $baseClasses }} {{ $stateClasses }}">
+                                    {{ $index + 1 }}
+                                </button>
+                            @endforeach
                             
                             {{-- Tombol Soal Baru (+) --}}
                             @if($totalQuestions > 0)
-                                <button wire:click="navigateToNewQuestion"
+                                <button wire:key="nav-btn-new-question"
+                                        wire:click="navigateToNewQuestion"
                                         class="w-10 h-10 rounded border border-dashed border-gray-400 bg-white text-gray-400 hover:border-blue-500 hover:text-blue-500 flex items-center justify-center transition-colors">
                                     <span class="text-xl">+</span>
                                 </button>
@@ -374,9 +378,68 @@
         </div>
     </div>
 
-    {{-- Modal untuk List Soal --}}
+    {{-- MODAL BARU: Modal Data Terhapus (Trash) --}}
+    @if($showTrashModal)
+        <div wire:key="modal-trash-container" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div class="relative top-20 mx-auto p-4 border w-full max-w-5xl shadow-lg rounded-md bg-white">
+                <div class="flex justify-between items-center pb-3 border-b">
+                    <h3 class="text-lg font-bold text-gray-800">Data Question Terhapus (Soft Delete)</h3>
+                    <button wire:click="closeTrashModal" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="mt-4 max-h-96 overflow-y-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50 sticky top-0">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">No</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Question</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dihapus Pada</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            @forelse($trashedQuestions as $index => $trashed)
+                                <tr class="hover:bg-gray-50" wire:key="trashed-{{ $trashed->id }}">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $index + 1 }}</td>
+                                    <td class="px-6 py-4">
+                                        <div class="text-sm max-w-md line-clamp-2">{!! strip_tags($trashed->question) !!}</div>
+                                        <div class="text-xs text-gray-500 mt-1">
+                                            {{ $trashed->category?->name ?? '-' }}
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {{ $trashed->deleted_at->format('d M Y, H:i') }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                        <button wire:click="restoreQuestion({{ $trashed->id }})" class="text-green-600 hover:text-green-900 bg-green-50 px-3 py-1 rounded transition-colors">
+                                            Restore
+                                        </button>
+                                        {{-- <button onclick="confirmForceDelete({{ $trashed->id }})" class="text-red-600 hover:text-red-900 bg-red-50 px-3 py-1 rounded transition-colors">
+                                            Hapus Permanen
+                                        </button> --}}
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr wire:key="trashed-empty-row">
+                                    <td colspan="4" class="px-6 py-8 text-center text-gray-500">
+                                        Tidak ada data question yang terhapus (soft delete).
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- Modal untuk List Soal (Modal Asli) --}}
     @if($showModal)
-        <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div wire:key="modal-list-container" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
             <div class="relative top-20 mx-auto p-4 border w-full max-w-6xl shadow-lg rounded-md bg-white">
                 {{-- Modal Header --}}
                 <div class="flex justify-between items-center pb-3">
@@ -427,7 +490,7 @@
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             @foreach($questions as $question)
-                                <tr class="hover:bg-gray-50 transition-colors">
+                                <tr class="hover:bg-gray-50 transition-colors" wire:key="question-row-{{ $question->id }}">
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                         {{ $loop->iteration + (($questions->currentPage() - 1) * $questions->perPage()) }}
                                     </td>
@@ -474,7 +537,7 @@
                     </table>
                     
                     @if($questions->isEmpty())
-                        <div class="text-center py-8 text-gray-500">
+                        <div wire:key="list-empty-state" class="text-center py-8 text-gray-500">
                             <svg class="w-16 h-16 mx-auto text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
@@ -492,26 +555,28 @@
         </div>
     @endif
 
-    {{-- Notifikasi (Toast) --}}
-    @if (session()->has('success'))
-        <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 3000)" 
-             class="fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg z-50 flex items-center">
-            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-            </svg>
-            {{ session('success') }}
-        </div>
-    @endif
+    {{-- Notifikasi (Toast) DIBUNGKUS WADAH PERMANEN --}}
+    <div id="toast-wrapper" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
+        @if (session()->has('success'))
+            <div wire:key="toast-success" x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 3000)" 
+                 class="bg-green-500 text-white px-4 py-2 rounded shadow-lg flex items-center pointer-events-auto">
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+                {{ session('success') }}
+            </div>
+        @endif
 
-    @if (session()->has('error'))
-        <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)" 
-             class="fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded shadow-lg z-50 flex items-center">
-            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-            </svg>
-            {{ session('error') }}
-        </div>
-    @endif
+        @if (session()->has('error'))
+            <div wire:key="toast-error" x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)" 
+                 class="bg-red-500 text-white px-4 py-2 rounded shadow-lg flex items-center pointer-events-auto">
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                </svg>
+                {{ session('error') }}
+            </div>
+        @endif
+    </div>
 
     {{-- Script untuk SweetAlert --}}
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -520,7 +585,7 @@
         function confirmDelete(questionId) {
             Swal.fire({
                 title: 'Apakah Anda yakin?',
-                text: "Soal yang dihapus tidak dapat dikembalikan!",
+                text: "Soal akan dipindahkan ke Data Terhapus!",
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#d33',
@@ -530,15 +595,32 @@
                 reverseButtons: true
             }).then((result) => {
                 if (result.isConfirmed) {
-                    // Panggil Livewire method langsung
                     @this.call('deleteQuestion', questionId);
+                }
+            });
+        }
+
+        // FUNGSI BARU: Konfirmasi hapus permanen
+        function confirmForceDelete(questionId) {
+            Swal.fire({
+                title: 'Hapus Permanen?',
+                text: "Data soal akan dihapus dari database dan tidak dapat dikembalikan!",
+                icon: 'error',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Ya, Hapus Permanen!',
+                cancelButtonText: 'Batal',
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    @this.call('forceDeleteQuestion', questionId);
                 }
             });
         }
 
         // Inisialisasi setelah Livewire siap
         document.addEventListener('livewire:init', function() {
-            // Event listener untuk event dari Livewire (backup)
             Livewire.on('show-delete-confirmation', (event) => {
                 if(event.questionId) {
                     confirmDelete(event.questionId);
@@ -563,7 +645,7 @@
     </script>
 </div>
 
-{{-- Script Push untuk TinyMCE (Tetap sama) --}}
+{{-- Script Push untuk TinyMCE --}}
 @push('scripts')
 <script>
     // Definisikan URL upload gambar secara global di window

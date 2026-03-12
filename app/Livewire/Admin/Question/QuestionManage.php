@@ -30,6 +30,7 @@ class QuestionManage extends Component
     public $is_active = true;
     public $isEdit = false;
     public $showModal = false;
+    public $showTrashModal = false; // Tambahan property untuk modal trash
     
     // Answers properties
     public $answers = [];
@@ -155,7 +156,6 @@ class QuestionManage extends Component
             $this->availableSubCategories = collect();
         }
         
-        // Pastikan sub kategori yang dipilih masih ada setelah loading
         if ($this->id_question_sub_category && !$this->availableSubCategories->contains('id', $this->id_question_sub_category)) {
             $this->id_question_sub_category = null;
         }
@@ -171,7 +171,7 @@ class QuestionManage extends Component
     {
         $this->questionsList = Question::where('id_tryout', $this->tryoutId)
             ->orderBy('id')
-            ->get(['id', 'question', 'is_active']); //        
+            ->get(['id', 'question', 'is_active']); 
         
             $this->totalQuestions = $this->questionsList->count();
         
@@ -221,7 +221,6 @@ class QuestionManage extends Component
     public function navigateToQuestion($questionId)
     {
         $this->resetForm();
-        // edit() sudah memuat sub kategori
         $this->edit($questionId); 
         
         $index = $this->questionsList->search(fn($item) => $item->id == $questionId);
@@ -260,9 +259,17 @@ class QuestionManage extends Component
 
         $categories = QuestionCategory::active()->get();
 
+        // Ambil data question yang sudah di soft delete khusus untuk tryout ini
+        $trashedQuestions = Question::onlyTrashed()
+            ->where('id_tryout', $this->tryoutId)
+            ->with(['category', 'subCategory'])
+            ->orderBy('deleted_at', 'desc')
+            ->get();
+
         return view('livewire.admin.question.question-manage', [
             'questions' => $questions,
             'categories' => $categories,
+            'trashedQuestions' => $trashedQuestions, // Kirim ke view
             'subCategories' => $this->availableSubCategories,
             'filterCategories' => QuestionCategory::active()->get(),
             'filterSubCategories' => $this->categoryFilter 
@@ -271,6 +278,7 @@ class QuestionManage extends Component
         ])->layout('layouts.admin');
     }
 
+    // Modal List Normal
     public function openModal($edit = false, $id = null)
     {
         $this->resetForm();
@@ -298,6 +306,42 @@ class QuestionManage extends Component
         $this->resetFieldErrors();
     }
 
+    // Modal Trash (Soft Delete)
+    public function openTrashModal()
+    {
+        $this->showTrashModal = true;
+    }
+
+    public function closeTrashModal()
+    {
+        $this->showTrashModal = false;
+    }
+
+    public function restoreQuestion($id)
+    {
+        try {
+            $question = Question::onlyTrashed()->findOrFail($id);
+            $question->restore();
+            
+            $this->loadQuestionsNavigation();
+            session()->flash('success', 'Question berhasil dikembalikan (restore).');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal me-restore question: ' . $e->getMessage());
+        }
+    }
+
+    public function forceDeleteQuestion($id)
+    {
+        try {
+            $question = Question::onlyTrashed()->findOrFail($id);
+            // Hapus paksa dari database
+            $question->forceDelete();
+            session()->flash('success', 'Question berhasil dihapus permanen.');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal menghapus permanen: ' . $e->getMessage());
+        }
+    }
+
     public function resetForm()
     {
         $this->reset([
@@ -321,7 +365,6 @@ class QuestionManage extends Component
     public function save()
     {
         if ($this->isEdit) {
-            // --- LOGIKA UPDATE ---
             $success = $this->update(); 
 
             if ($success) {
@@ -330,7 +373,6 @@ class QuestionManage extends Component
             }
             
         } else {
-            // --- LOGIKA CREATE ---
             $success = $this->create(); 
 
             if ($success) {
@@ -391,7 +433,7 @@ class QuestionManage extends Component
         $question = Question::with('answers')->findOrFail($id);
         $this->questionId = $id;
         $this->id_question_categories = $question->id_question_categories;
-        $this->id_question_sub_category = $question->id_question_sub_category; // Set Sub Kategori
+        $this->id_question_sub_category = $question->id_question_sub_category;
         $this->question = $question->question; 
         $this->explanation = $question->explanation; 
         $this->is_active = $question->is_active;
@@ -413,8 +455,6 @@ class QuestionManage extends Component
         $this->resetAnswerErrors();
         $this->resetFieldErrors();
         
-        // Memuat Sub Kategori agar `$availableSubCategories` terisi.
-        // Ini HARUS dipanggil setelah $id_question_categories diisi.
         $this->loadAvailableSubCategories(); 
 
         $this->dispatch('init-answers'); 
@@ -440,7 +480,6 @@ class QuestionManage extends Component
                 'is_active' => $this->is_active,
             ]);
 
-            // Hapus jawaban lama dan buat yang baru
             $question->answers()->delete();
             
             foreach ($this->answers as $index => $answerData) {
@@ -522,20 +561,15 @@ class QuestionManage extends Component
     {
         try {
             $question = Question::findOrFail($id);
+            
+            // Lakukan soft delete
             $question->delete(); 
             
-            $this->loadQuestionsNavigation();
-            
-            if ($this->questionId == $id) {
-                $this->resetForm();
-                $this->currentQuestionNumber = $this->totalQuestions > 0 ? $this->totalQuestions + 1 : 1;
-            }
-            
+            // Set pesan sukses
             session()->flash('success', 'Question berhasil dihapus.');
             
-            if ($this->showModal) {
-                $this->closeModal();
-            }
+            // Force refresh dengan melakukan redirect ke halaman saat ini
+            return redirect(request()->header('Referer'));
             
         } catch (\Exception $e) {
             session()->flash('error', 'Gagal menghapus question: ' . $e->getMessage());

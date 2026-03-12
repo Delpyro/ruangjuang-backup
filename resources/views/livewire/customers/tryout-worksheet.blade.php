@@ -162,9 +162,14 @@
                 
                 {{-- Progress Bar --}}
                 <div class="mb-3 relative w-full bg-gray-300 h-4 flex items-center justify-center overflow-hidden rounded">
-                    <div class="bg-[#2563EA] h-full absolute top-0 left-0 transition-all duration-500" :style="`width: ${$wire.progressPercent}%` shadow: 0 0 10px rgba(37,99,235,0.3)"></div>
-                    <span class="text-sm font-semibold z-10 text-black" x-text="Math.round($wire.progressPercent) + '%'"></span>
-                </div>
+                    <div class="bg-[#2563EA] h-full absolute top-0 left-0 transition-all duration-500" 
+                        :style="`width: ${$wire.progressPercent}%`"
+                        style="box-shadow: 0 0 10px rgba(37,99,235,0.3);">
+                    </div>
+                    <span class="text-sm font-semibold z-10 text-black" 
+                        x-text="Math.round($wire.progressPercent) + '%'">
+                    </span>
+                </div>  
 
                 {{-- Kategori --}}
                 <div class="bg-[#2563EA] text-white p-4 rounded-lg mb-4">
@@ -228,26 +233,22 @@
                             <label class="flex flex-col md:flex-row items-center gap-1 md:gap-2 cursor-pointer px-1">
                                 <input type="checkbox"
                                     x-model="localIsDoubtful"
-                                    class="text-ragu-ragu w-5 h-5 border-ragu-ragu rounded focus:ring-ragu-ragu">
+                                    class="checkbox-ragu-ragu">
                                 <span class="text-gray-700 font-medium text-[10px] md:text-sm">Ragu-ragu</span>
                             </label>
                         </div>
 
                         @if($currentIndex < $totalQuestions - 1)
                             <button @click="saveAndNext()"
-                                    :disabled="isSaving"
                                     class="flex-1 md:flex-none md:w-auto bg-[#2563EA] hover:bg-[#1a47b3] text-white font-semibold px-2 py-2 md:px-4 rounded-lg shadow-md h-10 md:order-3
                                             flex items-center justify-center gap-1 text-sm md:text-base">
-                                <span x-show="!isSaving">Simpan & Lanjut</span>
-                                <span x-show="isSaving" class="flex items-center gap-1">
-                                    <svg class="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                </span>
+                                Simpan & Lanjutkan
                             </button>
                         @else
                             <button @click="await saveToDatabase(); $dispatch('show-finish-alert')"
                                     class="flex-1 md:flex-none md:w-auto bg-[#EF4444] hover:bg-[#B91C1C] text-white font-semibold px-2 py-2 md:px-4 rounded-lg shadow-md h-10 md:order-3
                                             flex items-center justify-center gap-1 text-sm md:text-base">
-                                Kumpulkan
+                                Simpan & Kumpulkan
                             </button>
                         @endif
                     </div>
@@ -290,6 +291,45 @@
     .tinymce-content p { margin: 0 !important; }
     .text-ragu-ragu { color: #F9A825; }
     .border-ragu-ragu { border-color: #F9A825; }
+
+    /* Timpa warna checkbox ragu-ragu secara total */
+    /* Checkbox Custom Ragu-Ragu */
+    .checkbox-ragu-ragu {
+        appearance: none;
+        -webkit-appearance: none;
+        background-color: #fff;
+        border: 2px solid #F9A825 !important;
+        width: 1.25rem;
+        height: 1.25rem;
+        border-radius: 0.25rem;
+        display: inline-grid;
+        place-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease-in-out;
+    }
+
+    /* State: Ketika Dicentang */
+    .checkbox-ragu-ragu:checked {
+        background-color: #F9A825 !important;
+        background-image: none !important; /* Hapus centang default hitam */
+    }
+
+    /* Membuat centang putih secara manual */
+    .checkbox-ragu-ragu:checked::before {
+        content: "";
+        width: 0.65rem;
+        height: 0.65rem;
+        clip-path: polygon(14% 44%, 0 58%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+        background-color: white !important; /* Warna centang jadi putih */
+        transform: scale(1);
+    }
+
+    /* State: Fokus (Menghilangkan ring ungu) */
+    .checkbox-ragu-ragu:focus {
+        outline: none !important;
+        box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(249, 168, 37, 0.5) !important;
+    }
+
 </style>
 @endpush
 
