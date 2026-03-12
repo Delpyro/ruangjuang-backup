@@ -6,10 +6,10 @@
 
             <div class="flex items-center gap-3">
                 {{-- Tombol Atur Akses Global --}}
-                <a href="{{ url('/admin/user/akses') }}"
+                {{-- <a href="{{ url('/admin/user/akses') }}"
                     class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center shadow-sm">
                     <i class="fa-solid fa-shield-halved w-4 h-4 mr-2"></i> Atur Akses
-                </a>
+                </a> --}}
 
                 {{-- Tombol Tambah User --}}
                 <button
