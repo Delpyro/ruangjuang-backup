@@ -6,6 +6,7 @@ use App\Models\Tryout;
 use App\Models\UserTryout;
 use App\Models\UserAnswer;
 use App\Models\Question;
+use App\Models\Answer; // <-- Tambahan Model Answer
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 use Illuminate\Database\Eloquent\Collection;
@@ -80,7 +81,7 @@ class TryoutDiscussionWorksheet extends Component
     }
 
     /**
-     * ? FUNGSI KUNCI: Memuat riwayat jawaban dari SEMUA sesi Tryout yang selesai
+     * Memuat riwayat jawaban dari SEMUA sesi Tryout yang selesai
      */
     private function loadAnswerHistory()
     {
@@ -136,8 +137,6 @@ class TryoutDiscussionWorksheet extends Component
      */
     private function setCurrentQuestion()
     {
-        // ... (validasi index)
-        
         if ($this->currentQuestionIndex < 0) {
             $this->currentQuestionIndex = 0;
         }
@@ -206,36 +205,31 @@ class TryoutDiscussionWorksheet extends Component
         // 1. Tentukan Status Aktif (Border Biru Langit)
         $activeClass = '';
         if ($this->currentQuestionIndex === $index) {
-            // Ini adalah border #03A9F4 (cyan-400)
             $activeClass = ' z-10 scale-105 border-2 border-cyan-400 ring-2 ring-cyan-200 shadow-lg'; 
         }
 
-        // 2. Tentukan Status Jawaban (Warna Background Merah/Hijau)
+        // 2. Tentukan Status Jawaban
         $questionHistory = $this->answerHistory[$questionId] ?? []; 
         $latestAnswer = $questionHistory[array_key_last($questionHistory)] ?? null;
         
         $userAnswerId = $latestAnswer['answer_id'] ?? null;
-        
-        $correctAnswerId = Question::find($questionId)?->correctAnswer?->id;
 
-        // V V V V V PERUBAHAN DI SINI V V V V V
-
-        // Default ke Merah (Belum Jawab/Salah) -> Sesuai standar bg-red-600
+        // Default ke Merah (Belum Jawab/Salah)
         $baseBgClass = 'bg-red-600'; 
         
         if ($userAnswerId !== null) {
-            if ($userAnswerId == $correctAnswerId) {
-                // Jawaban Benar -> Hijau (Sesuai standar bg-answered dari config)
+            // Cek langsung ke database apakah jawaban ini benar
+            $isCorrect = Answer::where('id', $userAnswerId)->value('is_correct');
+            
+            if ($isCorrect) {
+                // Jawaban Benar -> Hijau (Sesuai standar config kamu)
                 $baseBgClass = 'bg-answered';
             } else {
-                // Jawaban Salah -> Merah (Sesuai standar bg-red-600)
+                // Jawaban Salah -> Merah
                 $baseBgClass = 'bg-red-600';
             }
         }
         
-        // ^ ^ ^ ^ ^ PERUBAHAN DI SINI ^ ^ ^ ^ ^
-        
-        // Mengembalikan KEDUA class (Base BG dan Active)
         return $baseBgClass . $activeClass;
     }
 
@@ -245,14 +239,19 @@ class TryoutDiscussionWorksheet extends Component
             return [];
         }
         
-        // PERBAIKAN KONSISTENSI: Pastikan selalu mengembalikan array
-        $history = $this->answerHistory[$this->currentQuestion->id] ?? [];
-        return $history;
+        return $this->answerHistory[$this->currentQuestion->id] ?? [];
     }
 
     public function getCorrectAnswerId(): ?int
     {
-        return optional(optional($this->currentQuestion)->correctAnswer)->id;
+        if (!$this->currentQuestion) {
+            return null;
+        }
+        
+        // Cari jawaban yang benar dari relasi answers yang sudah ter-load
+        $correctAnswer = $this->currentQuestion->answers->where('is_correct', true)->first();
+        
+        return $correctAnswer ? $correctAnswer->id : null;
     }
 
     public function getCurrentSubCategoryName(): string
