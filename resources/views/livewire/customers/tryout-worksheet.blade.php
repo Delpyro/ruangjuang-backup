@@ -7,6 +7,7 @@
         localAnswerId: null,
         localIsDoubtful: false,
         isSaving: false,
+        isLoading: false, {{-- State untuk indikator loading --}}
         showSidebar: false,
 
         init() {
@@ -58,21 +59,27 @@
         },
 
         async saveAndNext() {
+            this.isLoading = true;
             await this.saveToDatabase();
             this.scrollToTop();
+            this.isLoading = false;
         },
 
         async prev() {
             if (this.currentIndex > 0) {
+                this.isLoading = true;
                 await $wire.goToQuestion(this.currentIndex - 1);
                 this.scrollToTop();
+                this.isLoading = false;
             }
         },
 
         async goTo(index) {
+            this.isLoading = true;
             await $wire.goToQuestion(index);
             if (window.innerWidth < 768) this.showSidebar = false;
             this.scrollToTop();
+            this.isLoading = false;
         },
 
         scrollToTop() {
@@ -116,13 +123,13 @@
     <div class="flex flex-1 overflow-hidden relative">
         {{-- Overlay Mobile --}}
         <div x-show="showSidebar" 
-            x-transition.opacity
-            @click="showSidebar = false" 
-            class="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"></div>
+             x-transition.opacity
+             @click="showSidebar = false" 
+             class="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"></div>
 
         {{-- SIDEBAR NAVIGASI SOAL --}}
         <div :class="showSidebar ? 'translate-x-0' : '-translate-x-full md:translate-x-0'"
-            class="fixed inset-y-0 left-0 z-50 w-11/12 max-w-sm bg-white border-r overflow-y-auto p-4 shadow-xl
+             class="fixed inset-y-0 left-0 z-50 w-11/12 max-w-sm bg-white border-r overflow-y-auto p-4 shadow-xl
                     transform transition-transform duration-300 ease-in-out
                     md:relative md:transform-none md:w-64 md:shadow-none md:flex-shrink-0 md:z-auto">
                     
@@ -145,6 +152,20 @@
 
         {{-- AREA TENGAH (SOAL) --}}
         <div class="flex-1 flex flex-col relative overflow-hidden bg-gray-50">
+
+            {{-- INDIKATOR LOADING OVERLAY --}}
+            <div x-show="isLoading" 
+                 x-transition.opacity.duration.200ms
+                 style="display: none;"
+                 class="absolute inset-0 z-50 flex items-center justify-center bg-white/70 backdrop-blur-sm">
+                <div class="flex flex-col items-center">
+                    <svg class="animate-spin h-12 w-12 text-[#2563EA] mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span class="text-gray-700 font-semibold text-lg">Memuat Soal...</span>
+                </div>
+            </div>
 
             {{-- Header Mobile --}}
             <div class="sticky top-0 z-10 flex-shrink-0 bg-white border-b border-gray-200 flex justify-between items-center px-4 py-3 md:px-6 shadow md:hidden">
