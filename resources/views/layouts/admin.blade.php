@@ -107,7 +107,7 @@
 @livewireScripts
 @stack('scripts') 
 
-<script src="https://cdn.tiny.cloud/1/qmkvntzionu0428xa04wcfzfwxsir87e0h0bc2vrdptzppk7/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+<script src="https://cdn.tiny.cloud/1/9uh893g2xw8xw2q83cg6hg6cmyv1ucpv5knoypsmd2gq4ik4/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
 
 <script>
     // ?? PERBAIKAN UTAMA: Mendefinisikan URL upload gambar dari route name Laravel
