@@ -13,7 +13,8 @@ class TryoutsManage extends Component
 {
     use WithPagination, WithFileUploads;
 
-    public $title, $slug, $is_hots = false, $duration, $content, $quote, $price, $discount, $is_active = true;
+    // ✨ BARU: Tambahkan $category dengan default 'umum'
+    public $title, $slug, $category = 'umum', $is_hots = false, $duration, $content, $quote, $price, $discount, $is_active = true;
     public $tryoutId;
     public $isEdit = false;
     public $showModal = false;
@@ -21,16 +22,19 @@ class TryoutsManage extends Component
     public $tryoutToDelete;
     public $showTrashed = false;
 
-    // Untuk search
+    // Untuk search & filter
     public $search = '';
+    public $filterCategory = ''; // ✨ BARU: Variabel untuk dropdown filter kategori
 
-    protected $queryString = ['search', 'showTrashed'];
+    // ✨ BARU: Tambahkan filterCategory ke queryString
+    protected $queryString = ['search', 'showTrashed', 'filterCategory'];
 
     protected function rules()
     {
         return [
             'title' => 'required|string|max:255',
             'slug' => 'required|string|max:255|unique:tryouts,slug,' . $this->tryoutId,
+            'category' => 'required|in:umum,khusus', // ✨ BARU: Validasi kategori
             'is_hots' => 'boolean',
             'duration' => 'nullable|integer|min:1',
             'content' => 'required|string',
@@ -42,6 +46,12 @@ class TryoutsManage extends Component
     }
 
     public function updatedSearch()
+    {
+        $this->resetPage();
+    }
+
+    // ✨ BARU: Reset halaman ke 1 saat filter kategori diubah
+    public function updatedFilterCategory()
     {
         $this->resetPage();
     }
@@ -64,8 +74,15 @@ class TryoutsManage extends Component
     public function render()
     {
         $tryouts = Tryout::when($this->search, function ($query) {
-                $query->where('title', 'like', '%' . $this->search . '%')
-                    ->orWhere('slug', 'like', '%' . $this->search . '%');
+                // Perbaikan grouping query search agar tidak bentrok dengan query filter lainnya
+                $query->where(function($q) {
+                    $q->where('title', 'like', '%' . $this->search . '%')
+                      ->orWhere('slug', 'like', '%' . $this->search . '%');
+                });
+            })
+            // ✨ BARU: Query untuk filter kategori
+            ->when($this->filterCategory, function ($query) {
+                $query->where('category', $this->filterCategory);
             })
             ->when($this->showTrashed, function ($query) {
                 $query->onlyTrashed();
@@ -101,7 +118,8 @@ class TryoutsManage extends Component
 
     public function resetForm()
     {
-        $this->reset(['title', 'slug', 'is_hots', 'duration', 'content', 'quote', 'price', 'discount', 'is_active', 'tryoutId', 'isEdit']);
+        $this->reset(['title', 'slug', 'category', 'is_hots', 'duration', 'content', 'quote', 'price', 'discount', 'is_active', 'tryoutId', 'isEdit']);
+        $this->category = 'umum'; // ✨ BARU: Set ulang default ke 'umum'
         $this->is_hots = false;
         $this->is_active = true;
     }
@@ -113,6 +131,7 @@ class TryoutsManage extends Component
         Tryout::create([
             'title' => $this->title,
             'slug' => $this->slug,
+            'category' => $this->category, // ✨ BARU: Simpan kategori
             'is_hots' => $this->is_hots,
             'duration' => $this->duration,
             'content' => $this->content,
@@ -133,6 +152,7 @@ class TryoutsManage extends Component
         $this->tryoutId = $id;
         $this->title = $tryout->title;
         $this->slug = $tryout->slug;
+        $this->category = $tryout->category; // ✨ BARU: Ambil nilai kategori
         $this->is_hots = $tryout->is_hots;
         $this->duration = $tryout->duration;
         $this->content = $tryout->content;
@@ -151,6 +171,7 @@ class TryoutsManage extends Component
         $tryout->update([
             'title' => $this->title,
             'slug' => $this->slug,
+            'category' => $this->category, // ✨ BARU: Update kategori
             'is_hots' => $this->is_hots,
             'duration' => $this->duration,
             'content' => $this->content,

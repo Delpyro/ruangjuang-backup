@@ -8,7 +8,7 @@
         </div>
 
         <div class="bg-white rounded-2xl shadow-lg p-6 mb-8" data-aos="fade-up" data-aos-delay="100">
-            <div class="flex flex-col lg:flex-row gap-4 items-center justify-between">
+            <div class="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
                 {{-- Bagian Search --}}
                 <div class="flex-1 w-full lg:w-auto">
                     <div class="relative">
@@ -22,34 +22,47 @@
                     </div>
                 </div>
 
-                <div class="flex flex-wrap gap-2">
-                    {{-- Tombol Filter Kategori (Semua, HOTS, Regular) --}}
-                    <button
-                        wire:click="setFilter('all')"
-                        wire:loading.attr="disabled"
-                        class="px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 {{ $filter === 'all' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300' }}"
-                    >
-                        Semua
-                    </button>
-
-                    <button
-                        wire:click="setFilter('hots')"
-                        wire:loading.attr="disabled"
-                        class="px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 {{ $filter === 'hots' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300' }}"
-                    >
-                        HOTS <i class="fas fa-fire ml-1"></i>
-                    </button>
-
-                    <button
-                        wire:click="setFilter('regular')"
-                        wire:loading.attr="disabled"
-                        class="px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 {{ $filter === 'regular' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300' }}"
-                    >
-                        Regular
-                    </button>
+                <div class="flex flex-col sm:flex-row flex-wrap gap-4 w-full lg:w-auto items-center">
                     
-                    {{-- TOMBOL BUNDLING DIHILANGKAN DARI SINI --}}
-                    
+                    {{-- ✨ BARU: Dropdown Filter Kategori (Umum/Khusus) ✨ --}}
+                    <div class="w-full lg:w-auto">
+                        <select
+                            wire:model.live="category"
+                            wire:loading.attr="disabled"
+                            class="w-full lg:w-auto px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300"
+                        >
+                            <option value="all">Semua Kategori</option>
+                            <option value="umum">Kategori Umum</option>
+                            <option value="khusus">Kategori Khusus</option>
+                        </select>
+                    </div>
+
+                    {{-- Tombol Filter Tipe (Semua, HOTS, Regular) --}}
+                    <div class="flex flex-wrap gap-2 w-full lg:w-auto border-t sm:border-t-0 sm:border-l border-gray-200 pt-4 sm:pt-0 sm:pl-4">
+                        <button
+                            wire:click="setFilter('all')"
+                            wire:loading.attr="disabled"
+                            class="px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 {{ $filter === 'all' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300' }}"
+                        >
+                            Semua
+                        </button>
+
+                        <button
+                            wire:click="setFilter('hots')"
+                            wire:loading.attr="disabled"
+                            class="px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 {{ $filter === 'hots' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300' }}"
+                        >
+                            HOTS <i class="fas fa-fire ml-1"></i>
+                        </button>
+
+                        <button
+                            wire:click="setFilter('regular')"
+                            wire:loading.attr="disabled"
+                            class="px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 {{ $filter === 'regular' ? 'bg-teal-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300' }}"
+                        >
+                            Regular
+                        </button>
+                    </div>
                 </div>
 
                 <div class="w-full lg:w-auto">
@@ -65,7 +78,7 @@
                 </div>
             </div>
 
-            @if($search || $filter !== 'all' || $sort !== 'latest')
+            @if($search || $filter !== 'all' || $category !== 'all' || $sort !== 'latest')
             <div class="mt-4 flex flex-wrap items-center gap-2 text-sm">
                 <span class="text-gray-600">Filter aktif:</span>
 
@@ -78,10 +91,19 @@
                 </span>
                 @endif
 
+                {{-- ✨ BARU: Badge Info Filter Kategori ✨ --}}
+                @if($category !== 'all')
+                <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full flex items-center">
+                    Kategori: {{ ucfirst($category) }}
+                    <button wire:click="$set('category', 'all')" class="ml-2 text-indigo-600 hover:text-indigo-800">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </span>
+                @endif
+
                 @if($filter !== 'all')
                 <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full flex items-center">
-                    {{-- LOGIKA INI HARUS DIUBAH PADA LIVEWIRE CONTROLLER ANDA KARENA BUNDLING SUDAH DIHAPUS --}}
-                    Kategori: {{ $filter === 'hots' ? 'HOTS' : ($filter === 'bundling' ? 'Bundling' : 'Regular') }}
+                    Tipe: {{ $filter === 'hots' ? 'HOTS' : 'Regular' }}
                     <button wire:click="$set('filter', 'all')" class="ml-2 text-green-600 hover:text-green-800">
                         <i class="fas fa-times"></i>
                     </button>
@@ -140,7 +162,12 @@
                                 </div>
                                 
                                 {{-- Baris Badge --}}
-                                <div class="flex items-center gap-2 mt-1">
+                                <div class="flex flex-wrap items-center gap-2 mt-2">
+                                    {{-- ✨ BARU: Badge Kategori Umum/Khusus ✨ --}}
+                                    <span class="px-2 py-0.5 rounded text-xs font-bold flex-shrink-0 {{ $tryout->category === 'khusus' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700' }}">
+                                        {{ ucfirst($tryout->category) }}
+                                    </span>
+
                                     @if($tryout->is_hots)
                                         <span class="bg-red-500 text-white px-2 py-0.5 rounded text-xs font-bold flex-shrink-0 flex items-center">
                                             HOTS <i class="fas fa-fire ml-1"></i>

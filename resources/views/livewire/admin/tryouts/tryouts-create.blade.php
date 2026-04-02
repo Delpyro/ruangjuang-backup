@@ -53,6 +53,23 @@
             @enderror
         </div>
 
+        {{-- ✨ BARU: Category Dropdown ✨ --}}
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+                Kategori Tryout <span class="text-red-500">*</span>
+            </label>
+            <select
+                wire:model.blur="category"
+                class="w-full mt-1 border border-gray-300 rounded-lg px-4 py-3 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+            >
+                <option value="umum">Umum</option>
+                <option value="khusus">Khusus</option>
+            </select>
+            @error('category')
+                <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
+            @enderror
+        </div>
+
         {{-- Checkboxes --}}
         <div class="flex gap-6">
             <label class="flex items-center space-x-2">

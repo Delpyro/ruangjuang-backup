@@ -9,7 +9,8 @@ use Illuminate\Support\Str;
 class TryoutsEdit extends Component
 {
     public $tryout;
-    public $title, $slug, $is_hots = false, $duration, $content, $quote, $price, $discount, $is_active = true;
+    // ✨ BARU: Tambahkan $category
+    public $title, $slug, $category, $is_hots = false, $duration, $content, $quote, $price, $discount, $is_active = true;
     
     // ✨ BARU: Properti untuk tanggal diskon
     public $discount_start_date, $discount_end_date;
@@ -20,6 +21,7 @@ class TryoutsEdit extends Component
         
         $this->title = $this->tryout->title;
         $this->slug = $this->tryout->slug;
+        $this->category = $this->tryout->category; // ✨ BARU: Ambil nilai kategori dari database
         $this->is_hots = $this->tryout->is_hots;
         $this->duration = $this->tryout->duration;
         $this->content = $this->tryout->content;
@@ -41,6 +43,7 @@ class TryoutsEdit extends Component
     protected $rules = [
         'title' => 'required|string|max:255',
         'slug' => 'required|string|max:255|unique:tryouts,slug,', // Akan di-update di method update()
+        'category' => 'required|in:umum,khusus', // ✨ BARU: Validasi kategori
         'is_hots' => 'boolean',
         'duration' => 'nullable|integer|min:1',
         'content' => 'required|string',
@@ -90,6 +93,7 @@ class TryoutsEdit extends Component
         $this->tryout->update([
             'title' => $this->title,
             'slug' => $this->slug,
+            'category' => $this->category, // ✨ BARU: Update kategori
             'is_hots' => $this->is_hots,
             'duration' => $this->duration,
             'content' => $this->content,

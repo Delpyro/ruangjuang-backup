@@ -13,11 +13,14 @@ class TryoutPage extends Component
 
     public $search = '';
     public $filter = 'all'; // all, hots, regular
+    // ✨ BARU: Properti untuk filter kategori (umum/khusus)
+    public $category = 'all'; // all, umum, khusus
     public $sort = 'latest'; // latest, price_asc, price_desc
 
     protected $queryString = [
         'search' => ['except' => '', 'as' => 'q'],
         'filter' => ['except' => 'all', 'as' => 'f'],
+        'category' => ['except' => 'all', 'as' => 'c'], // ✨ BARU: Query string kategori
         'sort' => ['except' => 'latest', 'as' => 's'],
     ];
 
@@ -27,6 +30,12 @@ class TryoutPage extends Component
     }
 
     public function updatedFilter()
+    {
+        $this->resetPage();
+    }
+
+    // ✨ BARU: Fungsi update kategori
+    public function updatedCategory()
     {
         $this->resetPage();
     }
@@ -42,6 +51,13 @@ class TryoutPage extends Component
         $this->resetPage();
     }
 
+    // ✨ BARU: Fungsi untuk tombol set kategori
+    public function setCategory($value)
+    {
+        $this->category = $value;
+        $this->resetPage();
+    }
+
     public function setSort($value)
     {
         $this->sort = $value;
@@ -52,6 +68,7 @@ class TryoutPage extends Component
     {
         $this->search = '';
         $this->filter = 'all';
+        $this->category = 'all'; // ✨ BARU: Reset kategori
         $this->sort = 'latest';
         $this->resetPage();
     }
@@ -80,6 +97,10 @@ class TryoutPage extends Component
             })
             ->when($this->filter === 'regular', function ($query) {
                 $query->where('is_hots', false);
+            })
+            // ✨ BARU: Query filter kategori
+            ->when($this->category !== 'all', function ($query) {
+                $query->where('category', $this->category);
             })
             ->when($this->sort === 'latest', function ($query) {
                 $query->latest();

@@ -28,14 +28,29 @@
             </button>
         </div>
 
-        {{-- Search --}}
-        <div class="mb-4">
-            <input
-                type="text"
-                wire:model.live.debounce.300ms="search"
-                placeholder="Cari judul tryout..."
-                class="w-full md:w-1/3 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-            />
+        {{-- Search & Filter Kategori --}}
+        <div class="mb-4 flex flex-col md:flex-row gap-4">
+            {{-- Kotak Pencarian --}}
+            <div class="w-full md:w-1/3">
+                <input
+                    type="text"
+                    wire:model.live.debounce.300ms="search"
+                    placeholder="Cari judul tryout..."
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                />
+            </div>
+
+            {{-- ✨ BARU: Dropdown Filter Kategori ✨ --}}
+            <div class="w-full md:w-1/4">
+                <select 
+                    wire:model.live="filterCategory" 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                >
+                    <option value="">Semua Kategori</option>
+                    <option value="umum">Umum</option>
+                    <option value="khusus">Khusus</option>
+                </select>
+            </div>
         </div>
 
         {{-- Flash message --}}
@@ -74,6 +89,8 @@
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Judul Tryout</th>
+                        {{-- ✨ BARU: Kolom Kategori di Tabel ✨ --}}
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategori</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Durasi</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -97,6 +114,12 @@
                                         <span class="ml-2 px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full">HOTS</span>
                                     @endif
                                 </div>
+                            </td>
+                            {{-- ✨ BARU: Menampilkan Badge Kategori ✨ --}}
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{ $tryout->category === 'khusus' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800' }}">
+                                    {{ ucfirst($tryout->category) }}
+                                </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                                 {{-- asumsi duration_formatted sudah didefinisikan di model atau accessor --}}
@@ -166,12 +189,6 @@
                                             {{-- Font Awesome: fa-rotate-left --}}
                                             <i class="fa-solid fa-rotate-left w-4 h-4 mr-1"></i> Restore
                                         </button>
-                                        {{-- <button
-                                            wire:click="forceDelete({{ $tryout->id }})"
-                                            onclick="return confirm('Yakin ingin menghapus permanen? Data tidak dapat dikembalikan.')"
-                                            class="text-red-700 hover:text-red-900 bg-red-100 hover:bg-red-200 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm">
-                                            <i class="fa-solid fa-trash-can-xmark w-4 h-4 mr-1"></i> Hapus Permanen
-                                        </button> --}}
                                     @endif
                                 </div>
                             </td>
@@ -228,31 +245,41 @@
                                 <div class="space-y-4">
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Judul Tryout</label>
-                                        <input type="text" wire:model="title" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                        <input type="text" wire:model.blur="title" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
                                         @error('title') <span class="text-red-600 text-sm mt-1">{{ $message }}</span> @enderror
                                     </div>
 
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Slug</label>
-                                        <input type="text" wire:model="slug" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                        <input type="text" wire:model.blur="slug" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
                                         @error('slug') <span class="text-red-600 text-sm mt-1">{{ $message }}</span> @enderror
+                                    </div>
+
+                                    {{-- ✨ BARU: Input Category di Modal ✨ --}}
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                                        <select wire:model.blur="category" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="umum">Umum</option>
+                                            <option value="khusus">Khusus</option>
+                                        </select>
+                                        @error('category') <span class="text-red-600 text-sm mt-1">{{ $message }}</span> @enderror
                                     </div>
 
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Durasi (menit)</label>
-                                        <input type="number" wire:model="duration" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                        <input type="number" wire:model.blur="duration" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
                                         @error('duration') <span class="text-red-600 text-sm mt-1">{{ $message }}</span> @enderror
                                     </div>
 
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Harga (Rp)</label>
-                                        <input type="number" wire:model="price" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                        <input type="number" wire:model.blur="price" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
                                         @error('price') <span class="text-red-600 text-sm mt-1">{{ $message }}</span> @enderror
                                     </div>
 
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Diskon (Rp)</label>
-                                        <input type="number" wire:model="discount" min="0" :max="$price" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                        <input type="number" wire:model.blur="discount" min="0" :max="$price" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
                                         @error('discount') <span class="text-red-600 text-sm mt-1">{{ $message }}</span> @enderror
                                     </div>
                                 </div>

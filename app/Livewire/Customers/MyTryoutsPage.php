@@ -16,6 +16,8 @@ class MyTryoutsPage extends Component
 
     public $search = '';
     public $filter = 'all'; 
+    // ✨ BARU: Properti kategori
+    public $category = 'all'; 
     public $sort = 'latest'; 
     public $selectedTryoutId = null;
     public $selectedUserTryoutId = null; 
@@ -23,15 +25,19 @@ class MyTryoutsPage extends Component
     protected $queryString = [
         'search' => ['except' => '', 'as' => 'q'],
         'filter' => ['except' => 'all', 'as' => 'f'],
+        'category' => ['except' => 'all', 'as' => 'c'], // ✨ BARU: Binding query string
         'sort' => ['except' => 'latest', 'as' => 's'],
     ];
 
     public function updatedSearch() { $this->resetPage(); }
     public function updatedFilter() { $this->resetPage(); }
+    public function updatedCategory() { $this->resetPage(); } // ✨ BARU
     public function updatedSort() { $this->resetPage(); }
     public function setFilter($value) { $this->filter = $value; $this->resetPage(); }
     public function setSort($value) { $this->sort = $value; $this->resetPage(); }
-    public function resetFilters() { $this->search = ''; $this->filter = 'all'; $this->sort = 'latest'; $this->resetPage(); }
+    
+    // ✨ BARU: Reset Filters mencakup $category
+    public function resetFilters() { $this->search = ''; $this->filter = 'all'; $this->category = 'all'; $this->sort = 'latest'; $this->resetPage(); }
 
 
     /**
@@ -169,6 +175,9 @@ class MyTryoutsPage extends Component
             })
             ->when($this->filter === 'hots', fn ($q) => $q->where('is_hots', true))
             ->when($this->filter === 'regular', fn ($q) => $q->where('is_hots', false))
+            
+            // ✨ BARU: Query filtering Kategori
+            ->when($this->category !== 'all', fn ($q) => $q->where('category', $this->category))
             
             // Sortir
             ->when($this->sort === 'latest', fn ($q) => $q->orderBy('tryouts.id', 'desc'))

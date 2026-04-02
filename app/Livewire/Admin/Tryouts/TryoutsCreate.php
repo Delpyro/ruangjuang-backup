@@ -8,7 +8,8 @@ use Illuminate\Support\Str;
 
 class TryoutsCreate extends Component
 {
-    public $title, $slug, $is_hots = false, $duration, $content, $quote, $price, $discount, $is_active = true;
+    // ✨ BARU: Tambahkan $category dengan default 'umum'
+    public $title, $slug, $category = 'umum', $is_hots = false, $duration, $content, $quote, $price, $discount, $is_active = true;
     
     // ✨ BARU: Properti untuk tanggal diskon
     public $discount_start_date, $discount_end_date;
@@ -16,6 +17,7 @@ class TryoutsCreate extends Component
     protected $rules = [
         'title' => 'required|string|max:255',
         'slug' => 'required|string|max:255|unique:tryouts,slug',
+        'category' => 'required|in:umum,khusus', // ✨ BARU: Validasi kategori
         'is_hots' => 'boolean',
         'duration' => 'nullable|integer|min:1',
         'content' => 'required|string',
@@ -63,6 +65,7 @@ class TryoutsCreate extends Component
         Tryout::create([
             'title' => $this->title,
             'slug' => $this->slug,
+            'category' => $this->category, // ✨ BARU: Simpan kategori
             'is_hots' => $this->is_hots,
             'duration' => $this->duration,
             'content' => $this->content,

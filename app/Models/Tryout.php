@@ -17,6 +17,7 @@ class Tryout extends Model
     protected $fillable = [
         'title',
         'slug',
+        'category', // ✨ BARU: Kolom Kategori ditambahkan di sini
         'is_hots',
         'duration',
         'content',
