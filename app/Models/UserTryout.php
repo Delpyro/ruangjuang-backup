@@ -21,6 +21,7 @@ class UserTryout extends Model
     protected $fillable = [
         'id_user', // <-- DIPERBAIKI: Konsisten dengan skema aplikasi Anda
         'tryout_id',
+        'attempt',       // <--- INI YANG KURANG
         'order_id',
         'purchased_at',
         'started_at',    

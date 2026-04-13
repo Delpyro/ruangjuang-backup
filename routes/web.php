@@ -33,12 +33,9 @@ use App\Livewire\Admin\QuestionSubCategoriesManage;
 use App\Livewire\Customers\TryoutDiscussionWorksheet;
 use App\Livewire\Customers\Dashboard as CustomersDashboard;
 use App\Livewire\Customers\TestimonialPage; 
-
-// [!code ++] IMPORT KOMPONEN TRANSAKSI BARU (nama umum)
 use App\Livewire\Admin\TransactionsIndex;
 use App\Livewire\Admin\TransactionsDetail; 
-// [!code --] use App\Livewire\Admin\TransactionsManage; // Hapus atau biarkan saja (tidak dipakai)
-
+use App\Livewire\Admin\AssignTryout;
 /*
 |--------------------------------------------------------------------------
 | Public Routes
@@ -186,9 +183,12 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
     Route::get('dashboard', DashboardManage::class)->name('dashboard');
     Route::get('users', UsersManage::class)->name('users');
     
-    // [BARU] Rute untuk User Akses
+    // Rute untuk User Akses
     Route::get('user/akses', UserAkses::class)->name('user.akses'); 
     Route::get('user/akses/{id}', UserAkses::class)->name('user.akses.detail'); // Jika butuh ID spesifik
+    
+    // Rute untuk Assign Akses
+    Route::get('assign-tryout', AssignTryout::class)->name('assign-tryout');
     
     // Questions
     Route::get('question-categories', QuestionCategoriesManage::class)->name('question-categories');

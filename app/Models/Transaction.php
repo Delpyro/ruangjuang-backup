@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Transaction extends Model
 {
     use HasFactory;
-
+ 
     // Status Constants
     const STATUS_PENDING = 'pending';
     const STATUS_CAPTURE = 'capture';

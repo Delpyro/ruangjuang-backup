@@ -33,6 +33,10 @@
                 <i class="fas fa-users w-5 h-5 mr-3"></i> Users
             </a>
 
+            <a href="{{ route('admin.assign-tryout') }}" class="flex items-center px-3 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors duration-200 {{ request()->routeIs('admin.assign-tryout') ? 'bg-blue-100 text-blue-700' : '' }}">
+                <i class="fas fa-user-plus w-5 h-5 mr-3"></i> Assign Tryout
+            </a>
+            
             <a href="{{ route('admin.bundles.index') }}" class="flex items-center px-3 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors duration-200 {{ request()->routeIs('admin.bundles.*') ? 'bg-blue-100 text-blue-700' : '' }}">
                 <i class="fas fa-box w-5 h-5 mr-3"></i> Bundles
             </a>
