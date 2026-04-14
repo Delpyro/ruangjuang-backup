@@ -4,204 +4,93 @@
         <p class="text-gray-600">Isi form berikut untuk menambahkan tryout baru</p>
     </div>
 
-    @if (session('success'))
-        <div class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg flex items-center">
-            {{-- Font Awesome: fa-circle-check --}}
-            <i class="fa-solid fa-circle-check w-5 h-5 mr-3"></i>
-            <span>{{ session('success') }}</span>
-        </div>
-    @endif
-
-    @if (session('error'))
-        <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg flex items-center">
-            {{-- Font Awesome: fa-circle-exclamation --}}
-            <i class="fa-solid fa-circle-exclamation w-5 h-5 mr-3"></i>
-            <span>{{ session('error') }}</span>
-        </div>
-    @endif
+    {{-- Blok Notifikasi HTML lama dihapus, ditangani global oleh SweetAlert di Layout --}}
 
     <form wire:submit.prevent="save" class="space-y-6">
         {{-- Title --}}
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-                Judul Tryout <span class="text-red-500">*</span>
-            </label>
-            <input
-                type="text"
-                wire:model.blur="title"
-                class="w-full mt-1 border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                placeholder="Masukkan judul tryout"
-            >
-            @error('title')
-                <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
-            @enderror
+            <label class="block text-sm font-medium text-gray-700 mb-2">Judul Tryout <span class="text-red-500">*</span></label>
+            <input type="text" wire:model.blur="title" class="w-full mt-1 border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200" placeholder="Masukkan judul tryout">
+            @error('title') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
         </div>
 
         {{-- Slug --}}
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-                Slug <span class="text-red-500">*</span>
-            </label>
-            <input
-                type="text"
-                wire:model.blur="slug"
-                class="w-full mt-1 border border-gray-300 rounded-lg px-4 py-3 bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                placeholder="Slug akan otomatis terisi"
-            >
-            @error('slug')
-                <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
-            @enderror
+            <label class="block text-sm font-medium text-gray-700 mb-2">Slug <span class="text-red-500">*</span></label>
+            <input type="text" wire:model.blur="slug" class="w-full mt-1 border border-gray-300 rounded-lg px-4 py-3 bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200" placeholder="Slug akan otomatis terisi">
+            @error('slug') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
         </div>
 
-        {{-- ✨ BARU: Category Dropdown ✨ --}}
+        {{-- Category Dropdown --}}
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-                Kategori Tryout <span class="text-red-500">*</span>
-            </label>
-            <select
-                wire:model.blur="category"
-                class="w-full mt-1 border border-gray-300 rounded-lg px-4 py-3 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-            >
+            <label class="block text-sm font-medium text-gray-700 mb-2">Kategori Tryout <span class="text-red-500">*</span></label>
+            <select wire:model.blur="category" class="w-full mt-1 border border-gray-300 rounded-lg px-4 py-3 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200">
                 <option value="umum">Umum</option>
                 <option value="khusus">Khusus</option>
             </select>
-            @error('category')
-                <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
-            @enderror
+            @error('category') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
         </div>
 
         {{-- Checkboxes --}}
         <div class="flex gap-6">
             <label class="flex items-center space-x-2">
-                <input
-                    type="checkbox"
-                    wire:model="is_hots"
-                    class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                >
+                <input type="checkbox" wire:model="is_hots" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
                 <span class="text-gray-700">Tryout Hot</span>
             </label>
             <label class="flex items-center space-x-2">
-                <input
-                    type="checkbox"
-                    wire:model="is_active"
-                    checked
-                    class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                >
+                <input type="checkbox" wire:model="is_active" checked class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
                 <span class="text-gray-700">Aktif</span>
             </label>
         </div>
 
         {{-- Duration --}}
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-                Durasi (menit) <span class="text-red-500">*</span>
-            </label>
-            <input
-                type="number"
-                wire:model.blur="duration"
-                min="1"
-                class="w-full mt-1 border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                placeholder="Contoh: 120"
-            >
-            @error('duration')
-                <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
-            @enderror
+            <label class="block text-sm font-medium text-gray-700 mb-2">Durasi (menit) <span class="text-red-500">*</span></label>
+            <input type="number" wire:model.blur="duration" min="1" class="w-full mt-1 border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200" placeholder="Contoh: 120">
+            @error('duration') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
         </div>
 
         {{-- Content - TinyMCE Target --}}
         <div wire:ignore>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-                Konten Tryout <span class="text-red-500">*</span>
-            </label>
-            <textarea
-                id="tinymce-content"
-                rows="6"
-                class="w-full mt-1 border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                placeholder="Deskripsi lengkap tentang tryout..."
-            ></textarea>
-            @error('content')
-                <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
-            @enderror
+            <label class="block text-sm font-medium text-gray-700 mb-2">Konten Tryout <span class="text-red-500">*</span></label>
+            <textarea id="tinymce-content" rows="6" class="w-full mt-1 border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200" placeholder="Deskripsi lengkap tentang tryout..."></textarea>
+            @error('content') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
         </div>
 
         {{-- Quote - TinyMCE Target --}}
         <div wire:ignore>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-                Quote (Opsional)
-            </label>
-            <textarea
-                id="tinymce-quote"
-                rows="3"
-                class="w-full mt-1 border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                placeholder="Kutipan motivasi atau informasi tambahan..."
-            ></textarea>
-            @error('quote')
-                <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
-            @enderror
+            <label class="block text-sm font-medium text-gray-700 mb-2">Quote (Opsional)</label>
+            <textarea id="tinymce-quote" rows="3" class="w-full mt-1 border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200" placeholder="Kutipan motivasi atau informasi tambahan..."></textarea>
+            @error('quote') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
         </div>
 
         {{-- Price & Discount --}}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Harga (Rp) <span class="text-red-500">*</span>
-                </label>
-                <input
-                    type="number"
-                    wire:model.blur="price"
-                    min="0"
-                    class="w-full mt-1 border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                    placeholder="0"
-                >
-                @error('price')
-                    <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
-                @enderror
+                <label class="block text-sm font-medium text-gray-700 mb-2">Harga (Rp) <span class="text-red-500">*</span></label>
+                <input type="number" wire:model.blur="price" min="0" class="w-full mt-1 border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200" placeholder="0">
+                @error('price') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Diskon (Rp)
-                </label>
-                <input
-                    type="number"
-                    wire:model.blur="discount"
-                    min="0"
-                    class="w-full mt-1 border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                    placeholder="0"
-                >
-                @error('discount')
-                    <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
-                @enderror
+                <label class="block text-sm font-medium text-gray-700 mb-2">Diskon (Rp)</label>
+                <input type="number" wire:model.blur="discount" min="0" class="w-full mt-1 border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200" placeholder="0">
+                @error('discount') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
             </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Tanggal Mulai Diskon (Opsional)
-                </label>
-                <input
-                    type="date"
-                    wire:model.blur="discount_start_date"
-                    class="w-full mt-1 border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                >
-                @error('discount_start_date')
-                    <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
-                @enderror
+                <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal Mulai Diskon (Opsional)</label>
+                <input type="date" wire:model.blur="discount_start_date" class="w-full mt-1 border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200">
+                @error('discount_start_date') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Tanggal Berakhir Diskon (Opsional)
-                </label>
-                <input
-                    type="date"
-                    wire:model.blur="discount_end_date"
-                    class="w-full mt-1 border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                >
-                @error('discount_end_date')
-                    <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
-                @enderror
+                <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal Berakhir Diskon (Opsional)</label>
+                <input type="date" wire:model.blur="discount_end_date" class="w-full mt-1 border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200">
+                @error('discount_end_date') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
             </div>
         </div>
+
         {{-- Harga Setelah Diskon --}}
         @if($discount > 0 && $price > 0)
         <div class="p-4 bg-blue-50 rounded-lg">
@@ -222,18 +111,10 @@
 
         {{-- Action Buttons --}}
         <div class="flex justify-end gap-3 pt-6 border-t border-gray-200">
-            <a
-                href="{{ route('admin.tryouts.index') }}"
-                class="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition duration-200 font-medium flex items-center"
-            >
-                {{-- Font Awesome: fa-xmark --}}
+            <a href="{{ route('admin.tryouts.index') }}" class="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition duration-200 font-medium flex items-center">
                 <i class="fa-solid fa-xmark w-4 h-4 mr-2"></i> Batal
             </a>
-            <button
-                type="submit"
-                class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200 font-medium shadow-sm flex items-center"
-            >
-                {{-- Font Awesome: fa-floppy-disk --}}
+            <button type="submit" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200 font-medium shadow-sm flex items-center">
                 <i class="fa-solid fa-floppy-disk w-4 h-4 mr-2"></i> Simpan Tryout
             </button>
         </div>
@@ -242,55 +123,27 @@
 
 @push('scripts')
 <script>
-    // BARU: Definisikan URL upload gambar secara global di window agar bisa diakses oleh layout
     window.uploadImageUrl = "{{ route('admin.tinymce.upload.image') }}";
-
-    // FUNGSI CALLBACK: Berisi semua logic komunikasi Livewire (@this)
     const livewireTinyMCE = (editor, livewireProperty) => {
-        // Ketika editor siap, atur konten awal dari properti Livewire
-        editor.on('init', function(e) {
-             editor.setContent(@this.get(livewireProperty) || '');
-        });
-
-        // Ketika konten editor berubah atau blur, kirim data kembali ke Livewire
-        editor.on('change', function(e) {
-            @this.set(livewireProperty, editor.getContent());
-        });
-        editor.on('blur', function(e) {
-            @this.set(livewireProperty, editor.getContent());
-        });
+        editor.on('init', function(e) { editor.setContent(@this.get(livewireProperty) || ''); });
+        editor.on('change', function(e) { @this.set(livewireProperty, editor.getContent()); });
+        editor.on('blur', function(e) { @this.set(livewireProperty, editor.getContent()); });
     };
-
-
-    // Panggil inisialisasi setelah Livewire memuat DOM
     document.addEventListener('livewire:load', function () {
         initTinyMCE('textarea#tinymce-content', (editor) => livewireTinyMCE(editor, 'content'));
         initTinyMCE('textarea#tinymce-quote', (editor) => livewireTinyMCE(editor, 'quote'));
     });
-
-    // PENTING: Menangani Livewire v3 (livewire:navigated)
     document.addEventListener('livewire:navigated', function () {
-        if (tinymce.get('tinymce-content')) {
-            tinymce.get('tinymce-content').destroy();
-        }
-        if (tinymce.get('tinymce-quote')) {
-            tinymce.get('tinymce-quote').destroy();
-        }
-
+        if (tinymce.get('tinymce-content')) { tinymce.get('tinymce-content').destroy(); }
+        if (tinymce.get('tinymce-quote')) { tinymce.get('tinymce-quote').destroy(); }
         setTimeout(() => {
             initTinyMCE('textarea#tinymce-content', (editor) => livewireTinyMCE(editor, 'content'));
             initTinyMCE('textarea#tinymce-quote', (editor) => livewireTinyMCE(editor, 'quote'));
         }, 100);
     });
-
-    // PENTING: Menangani Livewire v2 atau update komponen biasa
     document.addEventListener('livewire:update', function() {
-        if (!tinymce.get('tinymce-content')) {
-            initTinyMCE('textarea#tinymce-content', (editor) => livewireTinyMCE(editor, 'content'));
-        }
-        if (!tinymce.get('tinymce-quote')) {
-            initTinyMCE('textarea#tinymce-quote', (editor) => livewireTinyMCE(editor, 'quote'));
-        }
+        if (!tinymce.get('tinymce-content')) { initTinyMCE('textarea#tinymce-content', (editor) => livewireTinyMCE(editor, 'content')); }
+        if (!tinymce.get('tinymce-quote')) { initTinyMCE('textarea#tinymce-quote', (editor) => livewireTinyMCE(editor, 'quote')); }
     });
 </script>
 @endpush

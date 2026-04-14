@@ -1,27 +1,16 @@
 <div class="container mx-auto px-4 py-6">
     <div class="bg-white rounded-xl shadow-md overflow-hidden p-6 mb-8 border border-gray-100">
-        {{-- Header Form --}}
         <div class="mb-6 flex justify-between items-start">
             <div>
-                <h2 class="text-2xl font-bold text-gray-800">Manajemen Promo Terlaris</h2>
+                <h2 class="text-2xl font-bold text-gray-800">Manajemen Promo Terlaris (Admin)</h2>
                 <p class="text-sm text-gray-500 mt-1">Pilih Try Out atau Bundle untuk ditampilkan di halaman depan section Promo.</p>
             </div>
-            {{-- Indikator Kuota --}}
             <div class="bg-gray-100 px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium">
                 <span class="text-gray-600">Kuota:</span> 
                 <span class="{{ $totalPromos >= 3 ? 'text-red-600' : 'text-blue-600' }}">{{ $totalPromos }}/3</span>
             </div>
         </div>
 
-        {{-- Flash Message Success --}}
-        @if (session()->has('success'))
-            <div class="mb-4 p-4 bg-green-50 text-green-800 rounded-lg border border-green-200 flex items-center shadow-sm">
-                <i class="fa-solid fa-circle-check w-5 h-5 mr-3 text-green-600"></i>
-                <span>{{ session('success') }}</span>
-            </div>
-        @endif
-
-        {{-- Flash Message Error Kuota (PENTING) --}}
         @error('general')
             <div class="mb-4 p-4 bg-red-50 text-red-800 rounded-lg border border-red-200 flex items-center shadow-sm">
                 <i class="fa-solid fa-triangle-exclamation w-5 h-5 mr-3 text-red-600"></i>
@@ -29,9 +18,7 @@
             </div>
         @enderror
 
-        {{-- Form Tambah Promo (Disable form jika kuota penuh) --}}
         <form wire:submit.prevent="addToPromo" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end bg-gray-50 p-5 rounded-xl border border-gray-200 {{ $totalPromos >= 3 ? 'opacity-50 pointer-events-none' : '' }}">
-            
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Pilih Jenis</label>
                 <select wire:model.live="type" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" {{ $totalPromos >= 3 ? 'disabled' : '' }}>
@@ -61,7 +48,7 @@
         </form>
     </div>
 
-    {{-- Tabel Promo Aktif --}}
+    {{-- Tabel Promo Terlaris (Tanpa Tab) --}}
     <div class="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 p-6">
         <h3 class="text-lg font-bold text-gray-800 mb-4">Daftar Promo Aktif</h3>
         
@@ -94,14 +81,33 @@
                                 @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="font-medium text-gray-900">{{ $promo->promoable->title ?? 'Item Dihapus' }}</div>
+                                <div class="font-medium text-gray-900">
+                                    {{ $promo->promoable->title ?? 'Item Tidak Ditemukan' }}
+                                </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                                 Rp {{ number_format($promo->promoable->price ?? 0, 0, ',', '.') }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center">
-                                <button wire:click="removeFromPromo({{ $promo->id }})" class="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-3 py-2 rounded-md transition-colors inline-flex items-center shadow-sm">
-                                    <i class="fa-solid fa-trash-can mr-1"></i> Hapus
+                                {{-- Tombol Hapus Biasa dengan SweetAlert --}}
+                                <button type="button" x-data x-on:click="
+                                    Swal.fire({
+                                        title: 'Hapus Promo?',
+                                        text: 'Item ini akan dihapus dari daftar Promo Terlaris.',
+                                        icon: 'warning',
+                                        showCancelButton: true,
+                                        confirmButtonColor: '#ef4444',
+                                        cancelButtonColor: '#6b7280',
+                                        confirmButtonText: 'Ya, Hapus!',
+                                        cancelButtonText: 'Batal'
+                                    }).then(async (result) => {
+                                        if (result.isConfirmed) { 
+                                            const res = await $wire.removeFromPromo({{ $promo->id }});
+                                            Swal.fire({ icon: 'success', title: 'Berhasil!', text: res.message, showConfirmButton: false, timer: 2000, toast: true, position: 'top-end' });
+                                        }
+                                    })
+                                " class="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-3 py-2 rounded-md transition-colors duration-200 inline-flex items-center shadow-sm">
+                                    <i class="fa-solid fa-trash-can w-4 h-4 mr-1"></i> Hapus
                                 </button>
                             </td>
                         </tr>

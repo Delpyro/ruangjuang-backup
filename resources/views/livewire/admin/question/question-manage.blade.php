@@ -94,7 +94,7 @@
                                         @if($this->getFieldError('id_question_categories'))
                                             <div class="mt-1 text-red-600 text-sm flex items-center">
                                                 <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
                                                 </svg>
                                                 {{ $this->getFieldError('id_question_categories') }}
                                             </div>
@@ -119,7 +119,7 @@
                                         @if($this->getFieldError('id_question_sub_category'))
                                             <div class="mt-1 text-red-600 text-sm flex items-center">
                                                 <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
                                                 </svg>
                                                 {{ $this->getFieldError('id_question_sub_category') }}
                                             </div>
@@ -136,7 +136,7 @@
                                     @if($this->getFieldError('question'))
                                         <div class="mt-1 text-red-600 text-sm flex items-center">
                                             <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
                                             </svg>
                                             {{ $this->getFieldError('question') }}
                                         </div>
@@ -184,7 +184,7 @@
                                                             @if($this->getAnswerFieldError($index, 'answer'))
                                                                 <div class="mt-1 text-red-600 text-sm flex items-center">
                                                                     <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
                                                                     </svg>
                                                                     {{ $this->getAnswerFieldError($index, 'answer') }}
                                                                 </div>
@@ -199,15 +199,15 @@
                                                         <div class="md:col-span-2">
                                                             <label class="block text-xs font-medium text-gray-600 mb-1">Poin</label>
                                                             <input type="number" 
-                                                                    wire:model="answers.{{ $index }}.points"
-                                                                    min="0"
-                                                                    max="5"
-                                                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 @if($this->getAnswerFieldError($index, 'points')) border-red-300 @endif"
-                                                                    placeholder="0">
+                                                                   wire:model="answers.{{ $index }}.points"
+                                                                   min="0"
+                                                                   max="5"
+                                                                   class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 @if($this->getAnswerFieldError($index, 'points')) border-red-300 @endif"
+                                                                   placeholder="0">
                                                             @if($this->getAnswerFieldError($index, 'points'))
                                                                 <div class="mt-1 text-red-600 text-sm flex items-center">
                                                                     <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
                                                                     </svg>
                                                                     {{ $this->getAnswerFieldError($index, 'points') }}
                                                                 </div>
@@ -223,9 +223,9 @@
                                                     <div class="mt-2 flex justify-between items-center">
                                                         <div class="flex items-center">
                                                             <input type="checkbox" 
-                                                                    wire:model="answers.{{ $index }}.is_correct"
-                                                                    wire:click="updateAnswerCorrect({{ $index }})"
-                                                                    class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                                                   wire:model="answers.{{ $index }}.is_correct"
+                                                                   wire:click="updateAnswerCorrect({{ $index }})"
+                                                                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                                                             <span class="ml-2 text-sm text-gray-600">Jawaban Benar</span>
                                                         </div>
                                                         
@@ -273,7 +273,7 @@
                                     @if($this->getFieldError('explanation'))
                                         <div class="mt-1 text-red-600 text-sm flex items-center">
                                             <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
                                             </svg>
                                             {{ $this->getFieldError('explanation') }}
                                         </div>
@@ -418,9 +418,7 @@
                                         <button wire:click="restoreQuestion({{ $trashed->id }})" class="text-green-600 hover:text-green-900 bg-green-50 px-3 py-1 rounded transition-colors">
                                             Restore
                                         </button>
-                                        {{-- <button onclick="confirmForceDelete({{ $trashed->id }})" class="text-red-600 hover:text-red-900 bg-red-50 px-3 py-1 rounded transition-colors">
-                                            Hapus Permanen
-                                        </button> --}}
+                                        {{-- Tombol Hapus Permanen dihilangkan untuk Admin --}}
                                     </td>
                                 </tr>
                             @empty
@@ -516,12 +514,11 @@
                                             </svg>
                                             Edit
                                         </button>
-                                        <button onclick="confirmDelete({{ $question->id }})" 
-                                                class="text-red-600 hover:text-red-900 px-2 py-1 rounded hover:bg-red-50 transition-colors flex items-center">
-                                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                                            </svg>
-                                            Hapus
+                                        {{-- Tombol Soft Delete dengan ikon tong sampah --}}
+                                        <button onclick="confirmSoftDelete({{ $question->id }})" 
+                                                class="text-amber-600 hover:text-amber-900 px-2 py-1 rounded hover:bg-amber-50 transition-colors flex items-center">
+                                            <i class="fa-solid fa-trash-can w-3 h-3 mr-1"></i>
+                                            Soft Delete
                                         </button>
                                         <button wire:click="toggleStatus({{ $question->id }})" 
                                                 class="text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-50 transition-colors flex items-center">
@@ -571,7 +568,7 @@
             <div wire:key="toast-error" x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)" 
                  class="bg-red-500 text-white px-4 py-2 rounded shadow-lg flex items-center pointer-events-auto">
                 <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
                 </svg>
                 {{ session('error') }}
             </div>
@@ -581,40 +578,21 @@
     {{-- Script untuk SweetAlert --}}
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
-        // Fungsi global untuk konfirmasi delete
-        function confirmDelete(questionId) {
+        // Fungsi global untuk konfirmasi soft delete
+        function confirmSoftDelete(questionId) {
             Swal.fire({
-                title: 'Apakah Anda yakin?',
-                text: "Soal akan dipindahkan ke Data Terhapus!",
+                title: 'Soft Delete Soal?',
+                text: "Soal ini akan dipindahkan ke Data Terhapus!",
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Ya, Hapus!',
+                confirmButtonColor: '#f59e0b', // Warna Amber
+                cancelButtonColor: '#6b7280',  // Warna Gray
+                confirmButtonText: 'Ya, Soft Delete!',
                 cancelButtonText: 'Batal',
                 reverseButtons: true
             }).then((result) => {
                 if (result.isConfirmed) {
-                    @this.call('deleteQuestion', questionId);
-                }
-            });
-        }
-
-        // FUNGSI BARU: Konfirmasi hapus permanen
-        function confirmForceDelete(questionId) {
-            Swal.fire({
-                title: 'Hapus Permanen?',
-                text: "Data soal akan dihapus dari database dan tidak dapat dikembalikan!",
-                icon: 'error',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Ya, Hapus Permanen!',
-                cancelButtonText: 'Batal',
-                reverseButtons: true
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    @this.call('forceDeleteQuestion', questionId);
+                    @this.call('softDelete', questionId);
                 }
             });
         }
@@ -623,9 +601,9 @@
         document.addEventListener('livewire:init', function() {
             Livewire.on('show-delete-confirmation', (event) => {
                 if(event.questionId) {
-                    confirmDelete(event.questionId);
+                    confirmSoftDelete(event.questionId);
                 } else if (event[0] && event[0].questionId) { 
-                    confirmDelete(event[0].questionId);
+                    confirmSoftDelete(event[0].questionId);
                 }
             });
         });

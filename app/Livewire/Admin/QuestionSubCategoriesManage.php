@@ -15,13 +15,13 @@ class QuestionSubCategoriesManage extends Component
     public $subCategoryId;
     public $isEdit = false;
     public $showModal = false;
-    public $confirmingDeletion = false;
-    public $subCategoryToDelete;
 
-    // Untuk search
+    // Untuk filter dan UI
     public $search = '';
+    public $showTrashed = false;
+    public $perPage = 10;
 
-    protected $queryString = ['search'];
+    protected $queryString = ['search', 'showTrashed'];
 
     protected function rules()
     {
@@ -32,12 +32,10 @@ class QuestionSubCategoriesManage extends Component
         ];
     }
 
-    public function updatedSearch()
-    {
-        $this->resetPage();
-    }
-
-    public $showTrashed = false;
+    // Reset pagination agar data tidak nyangkut saat filter berubah
+    public function updatedSearch() { $this->resetPage(); }
+    public function updatedShowTrashed() { $this->resetPage(); }
+    public function updatedPerPage() { $this->resetPage(); }
 
     public function render()
     {
@@ -51,11 +49,10 @@ class QuestionSubCategoriesManage extends Component
             ->when($this->showTrashed, function ($query) {
                 $query->onlyTrashed(); // Hanya tampilkan yang terhapus
             }, function ($query) {
-                $query->whereNull('deleted_at'); // Hanya tampilkan yang tidak terhapus
+                $query->whereNull('deleted_at'); // Hanya tampilkan yang aktif
             })
-            // PERUBAHAN: Menggunakan oldest() agar data terlama/tertua menjadi Nomor 1.
             ->oldest()
-            ->paginate(10);
+            ->paginate($this->perPage);
 
         $categories = QuestionCategory::where('is_active', true)->get();
 
@@ -65,6 +62,7 @@ class QuestionSubCategoriesManage extends Component
         ])->layout('layouts.admin');
     }
 
+    // --- MODAL CREATE & EDIT ---
     public function openModal($edit = false, $id = null)
     {
         $this->resetForm();
@@ -130,50 +128,26 @@ class QuestionSubCategoriesManage extends Component
         session()->flash('success', 'Sub kategori pertanyaan berhasil diperbarui.');
     }
 
-    public function confirmDelete($id)
-    {
-        $this->confirmingDeletion = true;
-        $this->subCategoryToDelete = $id;
-    }
+    // --- LOGIKA AKSI ADMIN (Soft Delete & Restore Only) ---
 
-    public function cancelDelete()
-    {
-        $this->confirmingDeletion = false;
-        $this->subCategoryToDelete = null;
-    }
-
-    public function delete()
+    public function softDeleteSubCategory($id)
     {
         try {
-            $subCategory = QuestionSubCategory::findOrFail($this->subCategoryToDelete);
+            $subCategory = QuestionSubCategory::findOrFail($id);
             $subCategory->delete();
-            
-            $this->confirmingDeletion = false;
-            $this->subCategoryToDelete = null;
-            session()->flash('success', 'Sub kategori pertanyaan berhasil dihapus (soft delete).');
+            session()->flash('success', 'Sub kategori pertanyaan berhasil di-Soft Delete.');
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal menghapus sub kategori: ' . $e->getMessage());
+            session()->flash('error', 'Gagal melakukan soft delete: ' . $e->getMessage());
         }
     }
 
-    public function forceDelete($id)
-    {
-        try {
-            $subCategory = QuestionSubCategory::withTrashed()->findOrFail($id);
-            $subCategory->forceDelete();
-            session()->flash('success', 'Sub kategori pertanyaan berhasil dihapus permanen.');
-        } catch (\Exception $e) {
-            session()->flash('error', 'Gagal menghapus permanen: ' . $e->getMessage());
-        }
-    }
-
-    public function restore($id)
+    public function restoreSubCategory($id)
     {
         try {
             QuestionSubCategory::withTrashed()->findOrFail($id)->restore();
-            session()->flash('success', 'Sub kategori pertanyaan berhasil direstore.');
+            session()->flash('success', 'Sub kategori pertanyaan berhasil dipulihkan.');
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal merestore sub kategori: ' . $e->getMessage());
+            session()->flash('error', 'Gagal memulihkan sub kategori: ' . $e->getMessage());
         }
     }
 }

@@ -11,7 +11,6 @@
     
     @livewireStyles
 </head>
-{{-- [!code ++] TAMBAHKAN 'h-screen overflow-hidden' DI SINI --}}
 <body class="bg-gray-100 font-sans antialiased h-screen overflow-hidden">
 
 <div class="flex h-screen">
@@ -20,7 +19,7 @@
             <h1 class="text-xl font-bold text-gray-800">Dashboard Admin</h1>
         </div>
 
-        <nav class="flex-1 p-4 space-y-1 overflow-y-auto"> {{-- Tambahkan overflow-y-auto di sini jika menu sidebar panjang --}}
+        <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
             <a href="{{ route('admin.dashboard') }}" class="flex items-center px-3 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors duration-200 {{ request()->routeIs('admin.dashboard') ? 'bg-blue-100 text-blue-700' : '' }}">
                 <i class="fas fa-home w-5 h-5 mr-3"></i> Dashboard
             </a>
@@ -57,7 +56,6 @@
                 <i class="fas fa-star w-5 h-5 mr-3"></i> Reviews
             </a>
 
-            {{-- MENU PROMO BARU --}}
             <a href="{{ route('admin.promo.index') }}" class="flex items-center px-3 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors duration-200 {{ request()->routeIs('admin.promos') ? 'bg-blue-100 text-blue-700' : '' }}">
                 <i class="fas fa-tags w-5 h-5 mr-3"></i> Promo Terlaris
             </a>
@@ -73,7 +71,7 @@
     </aside>
 
     <div class="flex-1 flex flex-col overflow-hidden">
-        <header class="h-16 bg-white shadow flex items-center justify-between px-6 shrink-0"> {{-- Tambahkan shrink-0 --}}
+        <header class="h-16 bg-white shadow flex items-center justify-between px-6 shrink-0">
             <h2 class="text-lg font-semibold text-gray-800">
                 @yield('title')
             </h2>
@@ -83,26 +81,8 @@
             </div>
         </header>
 
-        {{-- Area Konten Utama (Scrollable) --}}
         <main class="flex-1 overflow-x-hidden overflow-y-auto p-6 bg-gray-100">
-            @if(session('success'))
-                <div class="mb-6 p-4 bg-green-100 border-l-4 border-green-500 text-green-700 rounded">
-                    <div class="flex items-center">
-                        <i class="fas fa-check-circle w-5 h-5 mr-2"></i>
-                        <span>{{ session('success') }}</span>
-                    </div>
-                </div>
-            @endif
-
-            @if(session('error'))
-                <div class="mb-6 p-4 bg-red-100 border-l-4 border-red-500 text-red-700 rounded">
-                    <div class="flex items-center">
-                        <i class="fas fa-exclamation-circle w-5 h-5 mr-2"></i>
-                        <span>{{ session('error') }}</span>
-                    </div>
-                </div>
-            @endif
-
+            {{-- BLOK NOTIFIKASI HTML LAMA DIHAPUS DARI SINI --}}
             {{ $slot }}
         </main>
     </div>
@@ -111,35 +91,52 @@
 @livewireScripts
 @stack('scripts') 
 
-<script src="https://cdn.tiny.cloud/1/e6twyjr186ofq7irj4e2k92a69hkc7389vygarled7psu4h5/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+<script src="https://cdn.tiny.cloud/1/upiv2b2lhxi2vmy9xrik2ul1sabxcosdq2ixjyaij7g8dc5q/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+
+{{-- SWEETALERT2 SCRIPT --}}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    // Tangkap session flash dari Laravel dan ubah jadi SweetAlert
+    document.addEventListener('DOMContentLoaded', function () {
+        @if(session('success'))
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: '{!! session('success') !!}',
+                showConfirmButton: false,
+                timer: 2500,
+                toast: true,           // Opsional: Jadikan notifikasi sudut (Toast) agar tidak menutupi layar tengah
+                position: 'top-end'    // Opsional: Posisi di kanan atas
+            });
+        @endif
+
+        @if(session('error'))
+            Swal.fire({
+                icon: 'error',
+                title: 'Oops...',
+                text: '{!! session('error') !!}',
+            });
+        @endif
+    });
+</script>
 
 <script>
-    // ?? PERBAIKAN UTAMA: Mendefinisikan URL upload gambar dari route name Laravel
     window.uploadImageUrl = "{{ route('admin.tinymce.upload.image') }}"; 
 
-    // FUNGSI INITIATOR TINYMCE GLOBAL (TERMASUK LOGIC UPLOAD GAMBAR)
     function initTinyMCE(selector, callback) {
         tinymce.init({
             selector: selector,
-            // AKTIFKAN 'image' dan 'media'
             plugins: 'anchor autolink charmap codesample emoticons image media link lists searchreplace visualblocks wordcount code fullscreen', 
-            // TAMBAHKAN tombol 'image' dan 'media'
             toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media | align lineheight | numlist bullist indent outdent | emoticons charmap | removeformat | fullscreen | code',
             height: 300,
-
-            // PENGATURAN UPLOAD GAMBAR
             automatic_uploads: true,
             images_reuse_filename: true,
-            
-            // FUNGSI HANDLER UPLOAD GAMBAR KUSTOM
             images_upload_handler: function (blobInfo, progress) {
                 return new Promise(function (resolve, reject) {
                     const formData = new FormData();
-                    // Mengambil URL dari variabel global yang sudah didefinisikan di atas
                     const url = window.uploadImageUrl || ''; 
 
                     if (!url) {
-                        // Error ini seharusnya tidak lagi muncul
                         reject('URL upload gambar tidak terdefinisi. Pastikan route tinymce.upload.image sudah ada.');
                         return;
                     }
@@ -155,14 +152,13 @@
                     })
                     .then(response => {
                         if (!response.ok) {
-                            // Mencoba membaca error dari response JSON server
                             return response.json().then(error => reject('Upload gagal: ' + (error.error || response.statusText)));
                         }
                         return response.json();
                     })
                     .then(json => {
                         if (json && json.location) {
-                            resolve(json.location); // Mengembalikan URL publik
+                            resolve(json.location); 
                         } else {
                             reject('Upload gagal: Respon server tidak mengandung URL.');
                         }
@@ -172,8 +168,6 @@
                     });
                 });
             },
-
-            // Panggil callback Livewire
             setup: function(editor) {
                 callback(editor);
             }

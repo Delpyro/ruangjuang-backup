@@ -14,23 +14,13 @@ class QuestionCategoriesManage extends Component
     public $categoryId;
     public $isEdit = false;
     public $showModal = false;
-    public $confirmingDeletion = false;
-    public $categoryToDelete;
     
-    // Tambahkan untuk konfirmasi delete permanen
-    public $confirmingForceDelete = false;
-    public $categoryToForceDelete;
-
-    // Untuk search
+    // Properti untuk filter dan UI
     public $search = '';
-
-    // Property untuk error message
-    public $errorMessage = '';
-
-    protected $queryString = ['search'];
-
-    // Tambahkan property untuk showTrashed
     public $showTrashed = false;
+    public $perPage = 10;
+
+    protected $queryString = ['search', 'showTrashed'];
 
     protected function rules()
     {
@@ -41,10 +31,10 @@ class QuestionCategoriesManage extends Component
         ];
     }
 
-    public function updatedSearch()
-    {
-        $this->resetPage();
-    }
+    // Reset pagination agar data tidak nyangkut saat filter berubah
+    public function updatedSearch() { $this->resetPage(); }
+    public function updatedShowTrashed() { $this->resetPage(); }
+    public function updatedPerPage() { $this->resetPage(); }
 
     public function render()
     {
@@ -53,19 +43,19 @@ class QuestionCategoriesManage extends Component
                 $query->where('name', 'like', '%' . $this->search . '%');
             })
             ->when($this->showTrashed, function ($query) {
-                $query->onlyTrashed(); // Hanya tampilkan yang terhapus
+                $query->onlyTrashed(); // Menampilkan data yang di-Soft Delete
             }, function ($query) {
-                $query->whereNull('deleted_at'); // Hanya tampilkan yang tidak terhapus
+                $query->whereNull('deleted_at'); // Menampilkan data Aktif
             })
-            // PERUBAHAN UTAMA: Menggunakan oldest() agar data terlama/tertua (yang pertama kali dibuat) menjadi Nomor 1.
             ->oldest() 
-            ->paginate(10);
+            ->paginate($this->perPage);
 
         return view('livewire.admin.question-categories-manage', [
             'categories' => $categories,
         ])->layout('layouts.admin');
     }
 
+    // --- MODAL CREATE & EDIT (Bawaan Asli) ---
     public function openModal($edit = false, $id = null)
     {
         $this->resetForm();
@@ -86,7 +76,7 @@ class QuestionCategoriesManage extends Component
 
     public function resetForm()
     {
-        $this->reset(['name', 'passing_grade', 'is_active', 'categoryId', 'isEdit', 'errorMessage']);
+        $this->reset(['name', 'passing_grade', 'is_active', 'categoryId', 'isEdit']);
         $this->passing_grade = 100.00;
         $this->is_active = true;
     }
@@ -104,7 +94,6 @@ class QuestionCategoriesManage extends Component
         $this->resetForm();
         $this->closeModal();
         session()->flash('success', 'Kategori pertanyaan berhasil ditambahkan.');
-        // Tidak perlu resetPage() karena data baru akan muncul di halaman terakhir.
     }
 
     public function edit($id)
@@ -133,110 +122,38 @@ class QuestionCategoriesManage extends Component
         session()->flash('success', 'Kategori pertanyaan berhasil diperbarui.');
     }
 
-    // Method untuk mengecek apakah kategori memiliki subkategori
+    // --- LOGIKA AKSI ADMIN (Hanya Soft Delete & Restore) ---
+
     private function hasSubCategories($categoryId)
     {
         $category = QuestionCategory::with(['subCategories'])->find($categoryId);
         return $category && $category->subCategories->count() > 0;
     }
 
-    public function confirmDelete($id)
-    {
-        // Cek apakah kategori memiliki subkategori
-        if ($this->hasSubCategories($id)) {
-            $this->errorMessage = 'Kategori tidak dapat dihapus karena masih memiliki subkategori. Harap hapus atau pindahkan semua subkategori terlebih dahulu.';
-            $this->confirmingDeletion = false;
-            return;
-        }
-
-        $this->errorMessage = '';
-        $this->confirmingDeletion = true;
-        $this->categoryToDelete = $id;
-    }
-
-    public function cancelDelete()
-    {
-        $this->confirmingDeletion = false;
-        $this->categoryToDelete = null;
-        $this->errorMessage = '';
-    }
-
-    public function delete()
+    public function softDeleteCategory($id)
     {
         try {
-            // Double check sebelum menghapus
-            if ($this->hasSubCategories($this->categoryToDelete)) {
+            // Double check backend
+            if ($this->hasSubCategories($id)) {
                 session()->flash('error', 'Kategori tidak dapat dihapus karena masih memiliki subkategori.');
-                $this->confirmingDeletion = false;
-                $this->categoryToDelete = null;
                 return;
             }
 
-            $category = QuestionCategory::findOrFail($this->categoryToDelete);
+            $category = QuestionCategory::findOrFail($id);
             $category->delete();
-            
-            $this->confirmingDeletion = false;
-            $this->categoryToDelete = null;
-            session()->flash('success', 'Kategori pertanyaan berhasil dihapus (soft delete).');
+            session()->flash('success', 'Kategori pertanyaan berhasil di-Soft Delete.');
         } catch (\Exception $e) {
             session()->flash('error', 'Gagal menghapus kategori: ' . $e->getMessage());
         }
     }
 
-    // Method untuk konfirmasi force delete dengan pengecekan
-    public function confirmForceDelete($id)
-    {
-        // Untuk force delete, kita juga perlu cek apakah ada subkategori
-        $category = QuestionCategory::withTrashed()->with(['subCategories'])->find($id);
-        
-        if ($category && $category->subCategories->count() > 0) {
-            $this->errorMessage = 'Kategori tidak dapat dihapus permanen karena masih memiliki subkategori. Harap hapus atau pindahkan semua subkategori terlebih dahulu.';
-            $this->confirmingForceDelete = false;
-            return;
-        }
-
-        $this->errorMessage = '';
-        $this->confirmingForceDelete = true;
-        $this->categoryToForceDelete = $id;
-    }
-
-    public function cancelForceDelete()
-    {
-        $this->confirmingForceDelete = false;
-        $this->categoryToForceDelete = null;
-        $this->errorMessage = '';
-    }
-
-    public function forceDelete()
-    {
-        try {
-            // Double check sebelum force delete
-            $category = QuestionCategory::withTrashed()->with(['subCategories'])->find($this->categoryToForceDelete);
-            
-            if ($category && $category->subCategories->count() > 0) {
-                session()->flash('error', 'Kategori tidak dapat dihapus permanen karena masih memiliki subkategori.');
-                $this->confirmingForceDelete = false;
-                $this->categoryToForceDelete = null;
-                return;
-            }
-
-            $category->forceDelete();
-            
-            $this->confirmingForceDelete = false;
-            $this->categoryToForceDelete = null;
-            session()->flash('success', 'Kategori pertanyaan berhasil dihapus permanen.');
-        } catch (\Exception $e) {
-            session()->flash('error', 'Gagal menghapus permanen: ' . $e->getMessage());
-        }
-    }
-
-    public function restore($id)
+    public function restoreCategory($id)
     {
         try {
             QuestionCategory::withTrashed()->findOrFail($id)->restore();
-            session()->flash('success', 'Kategori pertanyaan berhasil direstore.');
+            session()->flash('success', 'Kategori pertanyaan berhasil dipulihkan.');
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal merestore kategori: ' . $e->getMessage());
+            session()->flash('error', 'Gagal memulihkan kategori: ' . $e->getMessage());
         }
     }
 }

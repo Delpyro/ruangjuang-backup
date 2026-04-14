@@ -30,7 +30,7 @@ class QuestionManage extends Component
     public $is_active = true;
     public $isEdit = false;
     public $showModal = false;
-    public $showTrashModal = false; // Tambahan property untuk modal trash
+    public $showTrashModal = false; 
     
     // Answers properties
     public $answers = [];
@@ -269,7 +269,7 @@ class QuestionManage extends Component
         return view('livewire.admin.question.question-manage', [
             'questions' => $questions,
             'categories' => $categories,
-            'trashedQuestions' => $trashedQuestions, // Kirim ke view
+            'trashedQuestions' => $trashedQuestions, 
             'subCategories' => $this->availableSubCategories,
             'filterCategories' => QuestionCategory::active()->get(),
             'filterSubCategories' => $this->categoryFilter 
@@ -278,7 +278,6 @@ class QuestionManage extends Component
         ])->layout('layouts.admin');
     }
 
-    // Modal List Normal
     public function openModal($edit = false, $id = null)
     {
         $this->resetForm();
@@ -306,7 +305,6 @@ class QuestionManage extends Component
         $this->resetFieldErrors();
     }
 
-    // Modal Trash (Soft Delete)
     public function openTrashModal()
     {
         $this->showTrashModal = true;
@@ -315,31 +313,6 @@ class QuestionManage extends Component
     public function closeTrashModal()
     {
         $this->showTrashModal = false;
-    }
-
-    public function restoreQuestion($id)
-    {
-        try {
-            $question = Question::onlyTrashed()->findOrFail($id);
-            $question->restore();
-            
-            $this->loadQuestionsNavigation();
-            session()->flash('success', 'Question berhasil dikembalikan (restore).');
-        } catch (\Exception $e) {
-            session()->flash('error', 'Gagal me-restore question: ' . $e->getMessage());
-        }
-    }
-
-    public function forceDeleteQuestion($id)
-    {
-        try {
-            $question = Question::onlyTrashed()->findOrFail($id);
-            // Hapus paksa dari database
-            $question->forceDelete();
-            session()->flash('success', 'Question berhasil dihapus permanen.');
-        } catch (\Exception $e) {
-            session()->flash('error', 'Gagal menghapus permanen: ' . $e->getMessage());
-        }
     }
 
     public function resetForm()
@@ -552,27 +525,37 @@ class QuestionManage extends Component
         }
     }
 
-    public function confirmDelete($questionId)
+    // --- UBAH: Method untuk konfirmasi event modal jika masih dipakai ---
+    public function confirmSoftDelete($questionId)
     {
         $this->dispatch('show-delete-confirmation', questionId: $questionId);
     }
 
-    public function deleteQuestion($id)
+    // --- UBAH: Rename method menjadi softDelete ---
+    public function softDelete($id)
     {
         try {
             $question = Question::findOrFail($id);
-            
-            // Lakukan soft delete
             $question->delete(); 
             
-            // Set pesan sukses
-            session()->flash('success', 'Question berhasil dihapus.');
-            
-            // Force refresh dengan melakukan redirect ke halaman saat ini
+            session()->flash('success', 'Question berhasil diarsipkan (soft delete).');
             return redirect(request()->header('Referer'));
             
         } catch (\Exception $e) {
             session()->flash('error', 'Gagal menghapus question: ' . $e->getMessage());
+        }
+    }
+
+    public function restoreQuestion($id)
+    {
+        try {
+            $question = Question::onlyTrashed()->findOrFail($id);
+            $question->restore();
+            
+            $this->loadQuestionsNavigation();
+            session()->flash('success', 'Question berhasil dikembalikan (restore).');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal me-restore question: ' . $e->getMessage());
         }
     }
 

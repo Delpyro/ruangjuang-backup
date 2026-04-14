@@ -7,26 +7,24 @@ use Illuminate\Support\Str;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\WithFileUploads;
-use Illuminate\Support\Facades\Storage;
 
 class TryoutsManage extends Component
 {
     use WithPagination, WithFileUploads;
 
-    // ✨ BARU: Tambahkan $category dengan default 'umum'
     public $title, $slug, $category = 'umum', $is_hots = false, $duration, $content, $quote, $price, $discount, $is_active = true;
     public $tryoutId;
     public $isEdit = false;
     public $showModal = false;
-    public $confirmingDeletion = false;
+    
+    public $confirmingDeletion = false; 
     public $tryoutToDelete;
+    
     public $showTrashed = false;
-
-    // Untuk search & filter
     public $search = '';
-    public $filterCategory = ''; // ✨ BARU: Variabel untuk dropdown filter kategori
+    public $filterCategory = ''; 
+    public $perPage = 10;
 
-    // ✨ BARU: Tambahkan filterCategory ke queryString
     protected $queryString = ['search', 'showTrashed', 'filterCategory'];
 
     protected function rules()
@@ -34,27 +32,21 @@ class TryoutsManage extends Component
         return [
             'title' => 'required|string|max:255',
             'slug' => 'required|string|max:255|unique:tryouts,slug,' . $this->tryoutId,
-            'category' => 'required|in:umum,khusus', // ✨ BARU: Validasi kategori
+            'category' => 'required|in:umum,khusus', 
             'is_hots' => 'boolean',
             'duration' => 'nullable|integer|min:1',
             'content' => 'required|string',
             'quote' => 'nullable|string',
             'price' => 'required|integer|min:0',
-            'discount' => 'nullable|integer|min:0|max:' . $this->price, // Diskon maksimal sama dengan harga
+            'discount' => 'nullable|integer|min:0|max:' . $this->price, 
             'is_active' => 'boolean',
         ];
     }
 
-    public function updatedSearch()
-    {
-        $this->resetPage();
-    }
-
-    // ✨ BARU: Reset halaman ke 1 saat filter kategori diubah
-    public function updatedFilterCategory()
-    {
-        $this->resetPage();
-    }
+    public function updatedSearch() { $this->resetPage(); }
+    public function updatedFilterCategory() { $this->resetPage(); }
+    public function updatedShowTrashed() { $this->resetPage(); }
+    public function updatedPerPage() { $this->resetPage(); }
 
     public function updatedTitle($value)
     {
@@ -63,7 +55,6 @@ class TryoutsManage extends Component
         }
     }
 
-    // Validasi diskon saat harga berubah
     public function updatedPrice($value)
     {
         if ($this->discount > $value) {
@@ -74,13 +65,11 @@ class TryoutsManage extends Component
     public function render()
     {
         $tryouts = Tryout::when($this->search, function ($query) {
-                // Perbaikan grouping query search agar tidak bentrok dengan query filter lainnya
                 $query->where(function($q) {
                     $q->where('title', 'like', '%' . $this->search . '%')
                       ->orWhere('slug', 'like', '%' . $this->search . '%');
                 });
             })
-            // ✨ BARU: Query untuk filter kategori
             ->when($this->filterCategory, function ($query) {
                 $query->where('category', $this->filterCategory);
             })
@@ -89,15 +78,15 @@ class TryoutsManage extends Component
             }, function ($query) {
                 $query->whereNull('deleted_at');
             })
-            // PERUBAHAN: Menggunakan oldest() agar data terlama/tertua menjadi Nomor 1 (di urutan teratas).
             ->oldest() 
-            ->paginate(10);
+            ->paginate($this->perPage);
 
         return view('livewire.admin.tryouts.tryouts-manage', [
             'tryouts' => $tryouts,
         ])->layout('layouts.admin');
     }
 
+    // --- FUNGSI MODAL BAWAAN ---
     public function openModal($edit = false, $id = null)
     {
         $this->resetForm();
@@ -119,7 +108,7 @@ class TryoutsManage extends Component
     public function resetForm()
     {
         $this->reset(['title', 'slug', 'category', 'is_hots', 'duration', 'content', 'quote', 'price', 'discount', 'is_active', 'tryoutId', 'isEdit']);
-        $this->category = 'umum'; // ✨ BARU: Set ulang default ke 'umum'
+        $this->category = 'umum'; 
         $this->is_hots = false;
         $this->is_active = true;
     }
@@ -131,13 +120,13 @@ class TryoutsManage extends Component
         Tryout::create([
             'title' => $this->title,
             'slug' => $this->slug,
-            'category' => $this->category, // ✨ BARU: Simpan kategori
+            'category' => $this->category, 
             'is_hots' => $this->is_hots,
             'duration' => $this->duration,
             'content' => $this->content,
             'quote' => $this->quote,
             'price' => $this->price,
-            'discount' => $this->discount, // Sekarang dalam bentuk nominal
+            'discount' => $this->discount, 
             'is_active' => $this->is_active,
         ]);
 
@@ -152,13 +141,13 @@ class TryoutsManage extends Component
         $this->tryoutId = $id;
         $this->title = $tryout->title;
         $this->slug = $tryout->slug;
-        $this->category = $tryout->category; // ✨ BARU: Ambil nilai kategori
+        $this->category = $tryout->category; 
         $this->is_hots = $tryout->is_hots;
         $this->duration = $tryout->duration;
         $this->content = $tryout->content;
         $this->quote = $tryout->quote;
         $this->price = $tryout->price;
-        $this->discount = $tryout->discount; // Sekarang dalam bentuk nominal
+        $this->discount = $tryout->discount; 
         $this->is_active = $tryout->is_active;
     }
 
@@ -171,13 +160,13 @@ class TryoutsManage extends Component
         $tryout->update([
             'title' => $this->title,
             'slug' => $this->slug,
-            'category' => $this->category, // ✨ BARU: Update kategori
+            'category' => $this->category, 
             'is_hots' => $this->is_hots,
             'duration' => $this->duration,
             'content' => $this->content,
             'quote' => $this->quote,
             'price' => $this->price,
-            'discount' => $this->discount, // Sekarang dalam bentuk nominal
+            'discount' => $this->discount, 
             'is_active' => $this->is_active,
         ]);
 
@@ -198,47 +187,56 @@ class TryoutsManage extends Component
         $this->tryoutToDelete = null;
     }
 
-    public function delete()
+    // --- FUNGSI AKSI UTAMA (SUDAH DIUBAH MENJADI SOFT DELETE) ---
+    
+    // 1. Soft Delete Eksekusi (Jika masih ada yang pakai modal confirmDelete bawaan)
+    public function softDelete()
     {
         try {
             $tryout = Tryout::findOrFail($this->tryoutToDelete);
-            $tryout->delete();
+            $tryout->delete(); // Ini otomatis Soft Delete di Laravel
             
             $this->confirmingDeletion = false;
             $this->tryoutToDelete = null;
-            session()->flash('success', 'Tryout berhasil dihapus (soft delete).');
+            session()->flash('success', 'Tryout berhasil diarsipkan (soft delete).');
         } catch (\Exception $e) {
             session()->flash('error', 'Gagal menghapus tryout: ' . $e->getMessage());
         }
     }
 
-    public function forceDelete($id)
+    // 1b. Fungsi Wrapper untuk dipanggil SweetAlert dari View
+    public function softDeleteTryout($id)
     {
         try {
-            $tryout = Tryout::withTrashed()->findOrFail($id);
-            $tryout->forceDelete();
-            session()->flash('success', 'Tryout berhasil dihapus permanen.');
-        } catch (\Exception $e) {
-            session()->flash('error', 'Gagal menghapus permanen: ' . $e->getMessage());
+            Tryout::findOrFail($id)->delete();
+            session()->flash('success', 'Tryout berhasil di Soft Delete.');
+        } catch (\Exception $e) { 
+            session()->flash('error', 'Gagal: ' . $e->getMessage()); 
         }
     }
 
+    // 2. Restore
     public function restore($id)
     {
         try {
             Tryout::withTrashed()->findOrFail($id)->restore();
-            session()->flash('success', 'Tryout berhasil direstore.');
+            session()->flash('success', 'Tryout berhasil dipulihkan.');
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal merestore tryout: ' . $e->getMessage());
+            session()->flash('error', 'Gagal memulihkan tryout: ' . $e->getMessage());
         }
     }
 
+    // 2b. Fungsi Wrapper Restore untuk SweetAlert
+    public function restoreTryout($id) {
+        $this->restore($id);
+    }
+
+    // --- FUNGSI TOGGLES ---
     public function toggleStatus($id)
     {
         try {
-            $tryout = Tryout::findOrFail($id);
+            $tryout = Tryout::withTrashed()->findOrFail($id); 
             $tryout->update(['is_active' => !$tryout->is_active]);
-            
             session()->flash('success', 'Status tryout berhasil diubah.');
         } catch (\Exception $e) {
             session()->flash('error', 'Gagal mengubah status: ' . $e->getMessage());
@@ -248,16 +246,14 @@ class TryoutsManage extends Component
     public function toggleHots($id)
     {
         try {
-            $tryout = Tryout::findOrFail($id);
+            $tryout = Tryout::withTrashed()->findOrFail($id); 
             $tryout->update(['is_hots' => !$tryout->is_hots]);
-            
             session()->flash('success', 'Status HOTS tryout berhasil diubah.');
         } catch (\Exception $e) {
             session()->flash('error', 'Gagal mengubah status HOTS: ' . $e->getMessage());
         }
     }
 
-    // Method untuk menghitung harga akhir (jika diperlukan di view)
     public function getFinalPriceProperty()
     {
         if ($this->discount) {

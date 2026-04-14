@@ -2,15 +2,9 @@
     <div class="bg-white rounded-xl shadow-md overflow-hidden p-6">
         {{-- Header --}}
         <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-bold text-gray-800">Manajemen Users</h2>
+            <h2 class="text-2xl font-bold text-gray-800">Manajemen Users (Admin)</h2>
 
             <div class="flex items-center gap-3">
-                {{-- Tombol Atur Akses Global --}}
-                {{-- <a href="{{ url('/admin/user/akses') }}"
-                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center shadow-sm">
-                    <i class="fa-solid fa-shield-halved w-4 h-4 mr-2"></i> Atur Akses
-                </a> --}}
-
                 {{-- Tombol Tambah User --}}
                 <button
                     wire:click="openModal(false)"
@@ -69,7 +63,7 @@
             </div>
         @endif
 
-        {{-- Error Message dari Livewire --}}
+        {{-- Error Message dari Livewire (Optional) --}}
         @if($errorMessage)
             <div class="mb-4 p-4 bg-yellow-50 text-yellow-800 rounded-lg border border-yellow-200 flex items-center justify-between shadow-sm">
                 <div class="flex items-center">
@@ -139,10 +133,10 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div class="flex space-x-2">
                                     @if(!$user->trashed())
-                                        {{-- Tombol Atur Akses (Per User) --}}
+                                        {{-- ✨ TOMBOL AKSES DIKEMBALIKAN ✨ --}}
                                         <a href="{{ url('/admin/user/akses/' . $user->id) }}"
-                                            class="text-amber-600 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm" title="Atur Akses User">
-                                            <i class="fa-solid fa-key w-4 h-4 mr-1"></i> Akses
+                                            class="text-cyan-600 hover:text-cyan-900 bg-cyan-50 hover:bg-cyan-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm" title="Atur Akses User">
+                                            <i class="fa-solid fa-lock w-4 h-4 mr-1"></i> Akses
                                         </a>
 
                                         {{-- Tombol Edit --}}
@@ -152,24 +146,54 @@
                                             <i class="fa-solid fa-pen-to-square w-4 h-4 mr-1"></i> Edit
                                         </button>
 
-                                        {{-- Tombol Hapus --}}
-                                        <button
-                                            wire:click="confirmDelete({{ $user->id }})"
-                                            class="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm">
-                                            <i class="fa-solid fa-trash-can w-4 h-4 mr-1"></i> Hapus
+                                        {{-- Tombol Soft Delete dengan SweetAlert --}}
+                                        <button type="button" x-data x-on:click="
+                                            Swal.fire({
+                                                title: 'Soft Delete User?',
+                                                text: 'User akan diarsipkan ke tab Terhapus.',
+                                                icon: 'warning',
+                                                showCancelButton: true,
+                                                confirmButtonColor: '#f59e0b',
+                                                cancelButtonColor: '#6b7280',
+                                                confirmButtonText: 'Ya, Soft Delete!',
+                                                cancelButtonText: 'Batal'
+                                            }).then(async (result) => {
+                                                if (result.isConfirmed) { 
+                                                    const res = await $wire.softDelete({{ $user->id }});
+                                                    if (res.status === 'success') {
+                                                        Swal.fire({ icon: 'success', title: 'Berhasil!', text: res.message, showConfirmButton: false, timer: 2000, toast: true, position: 'top-end' });
+                                                    } else {
+                                                        Swal.fire('Oops...', res.message, 'error');
+                                                    }
+                                                }
+                                            })
+                                        " class="text-amber-600 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm">
+                                            <i class="fa-solid fa-box-archive w-4 h-4 mr-1"></i> Soft Delete
                                         </button>
                                     @else
-                                        {{-- Tombol Restore --}}
-                                        <button
-                                            wire:click="restore({{ $user->id }})"
-                                            class="text-green-600 hover:text-green-900 bg-green-50 hover:bg-green-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm">
+                                        {{-- Tombol Restore dengan SweetAlert --}}
+                                        <button type="button" x-data x-on:click="
+                                            Swal.fire({
+                                                title: 'Restore User?',
+                                                text: 'User ini akan kembali aktif.',
+                                                icon: 'info',
+                                                showCancelButton: true,
+                                                confirmButtonColor: '#10b981',
+                                                cancelButtonColor: '#6b7280',
+                                                confirmButtonText: 'Ya, Restore!',
+                                                cancelButtonText: 'Batal'
+                                            }).then(async (result) => {
+                                                if (result.isConfirmed) { 
+                                                    const res = await $wire.restore({{ $user->id }});
+                                                    if (res.status === 'success') {
+                                                        Swal.fire({ icon: 'success', title: 'Berhasil!', text: res.message, showConfirmButton: false, timer: 2000, toast: true, position: 'top-end' });
+                                                    } else {
+                                                        Swal.fire('Oops...', res.message, 'error');
+                                                    }
+                                                }
+                                            })
+                                        " class="text-emerald-600 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm">
                                             <i class="fa-solid fa-rotate-left w-4 h-4 mr-1"></i> Restore
-                                        </button>
-                                        {{-- Tombol Force Delete --}}
-                                        <button
-                                            wire:click="confirmForceDelete({{ $user->id }})"
-                                            class="text-red-700 hover:text-red-900 bg-red-100 hover:bg-red-200 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm">
-                                            <i class="fa-solid fa-trash-can-xmark w-4 h-4 mr-1"></i> Hapus Permanen
                                         </button>
                                     @endif
                                 </div>
@@ -201,19 +225,15 @@
         @endif
     </div>
 
-    {{-- Modal Overlay --}}
+    {{-- Modal Overlay Form Tambah/Edit --}}
     @if($showModal)
         <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center" aria-labelledby="modal-title" role="dialog" aria-modal="true">
             <div class="fixed inset-0 bg-gray-500 bg-opacity-20 transition-opacity backdrop-blur-sm" aria-hidden="true"></div>
 
             <div class="flex items-center justify-center min-h-screen p-4 w-xl m-auto">
-                <div class="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-auto
-                                max-h-[90vh] overflow-y-auto transform transition-all">
+                <div class="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-auto max-h-[90vh] overflow-y-auto transform transition-all">
 
-                    {{-- Tombol close --}}
-                    <button wire:click="closeModal"
-                        class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors duration-200
-                                bg-gray-100 hover:bg-gray-200 rounded-full p-1">
+                    <button wire:click="closeModal" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors duration-200 bg-gray-100 hover:bg-gray-200 rounded-full p-1">
                         <i class="fa-solid fa-xmark w-5 h-5"></i>
                     </button>
 
@@ -224,7 +244,6 @@
                         </h3>
                         <p class="text-sm text-gray-500 mb-6">Isi form berikut untuk {{ $isEdit ? 'mengedit' : 'menambah' }} user</p>
 
-                        {{-- Form --}}
                         <form wire:submit.prevent="{{ $isEdit ? 'update' : 'create' }}">
                             <div class="space-y-4">
                                 <div>
@@ -255,15 +274,6 @@
                                 </div>
 
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
-                                    <select wire:model="role" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                                        <option value="user">User</option>
-                                        <option value="admin">Admin</option>
-                                    </select>
-                                    @error('role') <span class="text-red-600 text-sm mt-1">{{ $message }}</span> @enderror
-                                </div>
-
-                                <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
                                     <select wire:model="status" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
                                         <option value="active">Active</option>
@@ -288,8 +298,7 @@
                                             file:rounded-full file:border-0
                                             file:text-sm file:font-semibold
                                             file:bg-blue-50 file:text-blue-700
-                                            hover:file:bg-blue-100
-                                        ">
+                                            hover:file:bg-blue-100">
                                     </div>
                                     @if ($currentImage)
                                         <div class="mt-2">
@@ -301,7 +310,6 @@
                                 </div>
                             </div>
 
-                            {{-- Actions --}}
                             <div class="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-200">
                                 <button type="button" wire:click="closeModal" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200 flex items-center">
                                     <i class="fa-solid fa-xmark w-4 h-4 mr-1"></i> Batal
@@ -311,61 +319,6 @@
                                 </button>
                             </div>
                         </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-    @endif
-
-    {{-- Konfirmasi Delete Overlay --}}
-    @if($confirmingDeletion)
-        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="delete-confirmation-title" role="dialog" aria-modal="true">
-            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" aria-hidden="true"></div>
-
-            <div class="flex items-center justify-center min-h-screen p-4">
-                <div class="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-auto p-6">
-                    <div class="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
-                        <i class="fa-solid fa-triangle-exclamation w-6 h-6 text-red-600"></i>
-                    </div>
-                    <h3 class="text-lg font-bold text-center text-gray-900 mb-2" id="delete-confirmation-title">Konfirmasi Hapus</h3>
-                    <p class="text-sm text-gray-500 text-center mb-6">Apakah kamu yakin ingin menghapus user ini? Data akan dipindahkan ke tempat sampah dan dapat dipulihkan kapan saja.</p>
-
-                    <div class="flex justify-center gap-3">
-                        <button wire:click="cancelDelete" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200 flex items-center">
-                            <i class="fa-solid fa-xmark w-4 h-4 mr-1"></i> Batal
-                        </button>
-                        <button wire:click="delete" class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors duration-200 flex items-center">
-                            <i class="fa-solid fa-trash-can w-4 h-4 mr-1"></i> Hapus
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    @endif
-
-    {{-- Konfirmasi Force Delete Overlay --}}
-    @if($confirmingForceDelete)
-        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="force-delete-confirmation-title" role="dialog" aria-modal="true">
-            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" aria-hidden="true"></div>
-
-            <div class="flex items-center justify-center min-h-screen p-4">
-                <div class="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-auto p-6">
-                    <div class="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
-                        <i class="fa-solid fa-octagon-exclamation w-6 h-6 text-red-600"></i>
-                    </div>
-                    <h3 class="text-lg font-bold text-center text-gray-900 mb-2" id="force-delete-confirmation-title">Hapus Permanen</h3>
-                    <p class="text-sm text-gray-500 text-center mb-6">
-                        <strong class="text-red-600">PERINGATAN:</strong> Tindakan ini akan menghapus user secara permanen.
-                        Data yang dihapus tidak dapat dikembalikan. Yakin ingin melanjutkan?
-                    </p>
-
-                    <div class="flex justify-center gap-3">
-                        <button wire:click="cancelForceDelete" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200 flex items-center">
-                            <i class="fa-solid fa-xmark w-4 h-4 mr-1"></i> Batal
-                        </button>
-                        <button wire:click="forceDelete" class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors duration-200 flex items-center">
-                            <i class="fa-solid fa-trash-can-xmark w-4 h-4 mr-1"></i> Hapus Permanen
-                        </button>
                     </div>
                 </div>
             </div>

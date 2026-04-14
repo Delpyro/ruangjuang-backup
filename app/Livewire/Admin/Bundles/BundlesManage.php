@@ -10,58 +10,62 @@ class BundlesManage extends Component
 {
     use WithPagination;
 
-    // Properti untuk Pencarian dan Filter
     public $search = '';
     public $perPage = 10;
-    public $status = ''; // Filter berdasarkan status aktif/nonaktif
+    public $status = ''; 
+    
+    public $showTrashed = false; 
 
-    // Reset halaman ketika ada perubahan pada properti pencarian
-    public function updatedSearch(): void
-    {
-        $this->resetPage();
-    }
+    protected $queryString = ['search', 'status', 'showTrashed'];
 
-    public function updatedStatus(): void
-    {
-        $this->resetPage();
-    }
-
-    /**
-     * Hapus Bundle
-     */
-    public function deleteBundle($id): void
-    {
-        $bundle = Bundle::findOrFail($id);
-        
-        // Sebelum menghapus bundle, relasi pivot akan otomatis terhapus
-        // karena kita menggunakan onDelete('cascade') pada migrasi bundle_tryout.
-        $bundle->delete(); 
-        
-        session()->flash('success', 'Bundle "' . $bundle->title . '" berhasil dihapus (soft deleted).');
-    }
+    // Reset pagination saat ada perubahan pada filter
+    public function updatedSearch(): void { $this->resetPage(); }
+    public function updatedStatus(): void { $this->resetPage(); }
+    public function updatedShowTrashed(): void { $this->resetPage(); }
+    public function updatedPerPage(): void { $this->resetPage(); } // ✨ BARU: Mencegah bug dropdown perPage
 
     public function render()
     {
         $query = Bundle::query()
-            ->withCount('tryouts') // Hitung jumlah tryout di setiap bundle
-            // PERUBAHAN: Menggunakan asc (ascending) agar data terlama/tertua menjadi Nomor 1.
+            ->withCount('tryouts')
             ->orderBy('created_at', 'asc');
 
-        // Logic Pencarian
-        if ($this->search) {
-            $query->where('title', 'like', '%' . $this->search . '%')
-                  ->orWhere('slug', 'like', '%' . $this->search . '%');
+        // Logika untuk menampilkan data terhapus atau aktif
+        if ($this->showTrashed) {
+            $query->onlyTrashed();
+        } else {
+            $query->whereNull('deleted_at');
         }
 
-        // Logic Filter Status
+        if ($this->search) {
+            $query->where(function($q) {
+                $q->where('title', 'like', '%' . $this->search . '%')
+                  ->orWhere('slug', 'like', '%' . $this->search . '%');
+            });
+        }
+
         if ($this->status !== '') {
             $query->where('is_active', (bool)$this->status);
         }
 
-        $bundles = $query->paginate($this->perPage);
-
         return view('livewire.admin.bundles.bundles-manage', [
-            'bundles' => $bundles,
+            'bundles' => $query->paginate($this->perPage),
         ])->layout('layouts.admin');
+    }
+
+    // ✨ PERBAIKAN: Ubah nama jadi softDeleteBundle agar konsisten dengan Tryout
+    public function softDeleteBundle($id): void
+    {
+        $bundle = Bundle::findOrFail($id);
+        $bundle->delete(); 
+        session()->flash('success', 'Bundle "' . $bundle->title . '" berhasil di-Soft Delete.');
+    }
+
+    // Fitur Restore (Admin diizinkan me-restore data)
+    public function restoreBundle($id): void
+    {
+        $bundle = Bundle::withTrashed()->findOrFail($id);
+        $bundle->restore();
+        session()->flash('success', 'Bundle "' . $bundle->title . '" berhasil dipulihkan.');
     }
 }

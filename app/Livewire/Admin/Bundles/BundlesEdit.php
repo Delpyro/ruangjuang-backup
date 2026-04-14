@@ -15,7 +15,7 @@ class BundlesEdit extends Component
 
     public $title;
     public $slug;
-    public $description; // Properti untuk TinyMCE
+    public $description; 
     public $price = 0;
     public $discount = 0;
     public $is_active = true;
@@ -30,7 +30,7 @@ class BundlesEdit extends Component
         return [
             'title' => 'required|string|max:255',
             'slug' => ['required', 'string', 'max:255', Rule::unique('bundles', 'slug')->ignore($this->bundle->id)],
-            'description' => 'nullable|string', // Pastikan ini nullable atau required sesuai kebutuhan
+            'description' => 'nullable|string', 
             'price' => 'required|integer|min:0',
             'discount' => 'nullable|integer|min:0|lte:price', 
             'is_active' => 'boolean',
@@ -47,9 +47,7 @@ class BundlesEdit extends Component
         'price.required' => 'Harga bundle wajib diisi.',
         'price.min' => 'Harga tidak boleh negatif.',
         'selected_tryout_ids.required' => 'Bundle harus menyertakan minimal satu Tryout.',
-        'selected_tryout_ids.min' => 'Bundle harus menyertakan minimal satu Tryout.',
         'discount.lte' => 'Diskon tidak boleh melebihi harga Bundle.',
-        'expired_at.after' => 'Tanggal kedaluwarsa harus setelah hari ini.',
     ];
     
     public function mount(Bundle $bundle) 
@@ -58,72 +56,31 @@ class BundlesEdit extends Component
         
         $this->title = $bundle->title;
         $this->slug = $bundle->slug;
-        $this->description = $bundle->description; // Pastikan properti ini diisi dari model
+        $this->description = $bundle->description; 
         $this->price = $bundle->price;
         $this->discount = $bundle->discount;
         $this->is_active = $bundle->is_active;
-        
-        $this->expired_at = $bundle->expired_at 
-            ? Carbon::parse($bundle->expired_at)->format('Y-m-d\TH:i') 
-            : null;
-
+        $this->expired_at = $bundle->expired_at ? Carbon::parse($bundle->expired_at)->format('Y-m-d\TH:i') : null;
         $this->selected_tryout_ids = $bundle->tryouts()->pluck('tryouts.id')->toArray();
     }
 
     public function loadTryouts()
     {
         $query = Tryout::active();
-        
-        if ($this->search) {
-            $query->where('title', 'like', '%' . $this->search . '%');
-        }
-
-        if (!empty($this->selected_tryout_ids)) {
-             $query->orWhereIn('id', $this->selected_tryout_ids);
-        }
-        
+        if ($this->search) { $query->where('title', 'like', '%' . $this->search . '%'); }
+        if (!empty($this->selected_tryout_ids)) { $query->orWhereIn('id', $this->selected_tryout_ids); }
         return $query->select('id', 'title', 'price')->get();
     }
 
-    public function updatedTitle($value)
-    {
-        if (!empty($value)) {
-            $this->slug = Str::slug($value);
-        }
+    public function updatedTitle($value) { if (!empty($value)) { $this->slug = Str::slug($value); } }
+    public function updatedExpiredAt() { $this->validateOnly('expired_at'); }
+    public function updatedSelectAll($value) { $this->selected_tryout_ids = $value ? $this->loadTryouts()->pluck('id')->toArray() : []; }
+    public function updatedSelectedTryoutIds() {
+        $allCount = $this->loadTryouts()->count();
+        $this->selectAll = count($this->selected_tryout_ids) === $allCount && $allCount > 0;
     }
-    
-    public function updatedExpiredAt()
-    {
-        $this->validateOnly('expired_at');
-    }
-
-    public function updatedSelectAll($value)
-    {
-        if ($value) {
-            $this->selected_tryout_ids = $this->loadTryouts()->pluck('id')->toArray();
-        } else {
-            $this->selected_tryout_ids = []; 
-        }
-    }
-
-    public function updatedSelectedTryoutIds()
-    {
-        $allTryoutsCount = $this->loadTryouts()->count();
-        $selectedCount = count($this->selected_tryout_ids);
-        
-        $this->selectAll = $selectedCount === $allTryoutsCount && $allTryoutsCount > 0;
-    }
-
-    public function updatedDiscount()
-    {
-        $this->validateOnly('discount');
-    }
-
-    public function updatedPrice()
-    {
-        $this->validateOnly('price');
-        $this->validateOnly('discount');
-    }
+    public function updatedDiscount() { $this->validateOnly('discount'); }
+    public function updatedPrice() { $this->validateOnly('price'); $this->validateOnly('discount'); }
 
     public function update()
     {
@@ -143,53 +100,24 @@ class BundlesEdit extends Component
             $this->bundle->tryouts()->sync($this->selected_tryout_ids);
 
             session()->flash('success', 'Bundle **' . $this->title . '** berhasil diperbarui!');
-            return redirect()->route('admin.bundles.index'); 
+            return redirect()->route('admin.bundles.index'); // Redirect Admin
 
         } catch (\Exception $e) {
             session()->flash('error', 'Terjadi kesalahan saat memperbarui bundle: ' . $e->getMessage());
         }
     }
 
-    public function getFinalPriceProperty()
-    {
-        return max(0, $this->price - $this->discount);
+    public function getFinalPriceProperty() { return max(0, $this->price - $this->discount); }
+    public function getTotalIndividualPriceProperty() { return empty($this->selected_tryout_ids) ? 0 : Tryout::whereIn('id', $this->selected_tryout_ids)->sum('price'); }
+    public function getSavingsPercentageProperty() {
+        return ($this->totalIndividualPrice > 0 && $this->finalPrice > 0) ? round((($this->totalIndividualPrice - $this->finalPrice) / $this->totalIndividualPrice) * 100, 2) : 0;
     }
-
-    public function getTotalIndividualPriceProperty()
-    {
-        if (empty($this->selected_tryout_ids)) {
-            return 0;
-        }
-        
-        return Tryout::whereIn('id', $this->selected_tryout_ids)->sum('price');
-    }
-
-    public function getSavingsPercentageProperty()
-    {
-        $totalIndividual = $this->totalIndividualPrice; 
-        $finalPrice = $this->finalPrice;
-
-        if ($totalIndividual > 0 && $finalPrice > 0) {
-            $savings = $totalIndividual - $finalPrice;
-            return round(($savings / $totalIndividual) * 100, 2);
-        }
-        return 0;
-    }
-
-    public function getSelectedTryoutsCountProperty()
-    {
-        return count($this->selected_tryout_ids);
-    }
-
-    public function getHasSavingsProperty()
-    {
-        return $this->totalIndividualPrice > $this->finalPrice;
-    }
+    public function getSelectedTryoutsCountProperty() { return count($this->selected_tryout_ids); }
+    public function getHasSavingsProperty() { return $this->totalIndividualPrice > $this->finalPrice; }
 
     public function render()
     {
         $tryouts = $this->loadTryouts();
-
         return view('livewire.admin.bundles.bundles-edit', [
             'tryouts' => $tryouts,
         ])->layout('layouts.admin');

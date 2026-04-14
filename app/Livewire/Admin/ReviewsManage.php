@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\Admin; // <-- Perbaikan namespace
+namespace App\Livewire\Admin;
 
 use App\Models\Review;
 use Livewire\Component;
@@ -12,47 +12,28 @@ class ReviewsManage extends Component
 
     protected $paginationTheme = 'tailwind';
 
-    // --- Properti untuk Deletion ---
-    public $confirmingDeletion = false;
-    public $reviewToDelete;
-
-    // --- Properti untuk Filtering & Searching ---
     public $search = '';
     public $filterStatus = 'all'; // 'all', 'published', 'hidden'
+    public $showTrashed = false; // Tab Aktif/Terhapus
+    public $perPage = 10;
 
-    /**
-     * Menghubungkan filter ke query string URL.
-     */
     protected $queryString = [
         'search' => ['except' => ''],
         'filterStatus' => ['except' => 'all', 'as' => 'status'],
+        'showTrashed' => ['except' => false],
     ];
 
-    /**
-     * Reset halaman saat melakukan pencarian.
-     */
-    public function updatedSearch()
-    {
-        $this->resetPage();
-    }
+    // Reset pagination agar data tidak nyangkut saat filter berubah
+    public function updatedSearch() { $this->resetPage(); }
+    public function updatedFilterStatus() { $this->resetPage(); }
+    public function updatedShowTrashed() { $this->resetPage(); }
+    public function updatedPerPage() { $this->resetPage(); }
 
-    /**
-     * Reset halaman saat mengubah filter status.
-     */
-    public function updatedFilterStatus()
-    {
-        $this->resetPage();
-    }
-
-    /**
-     * Render komponen.
-     */
     public function render()
     {
         $reviews = Review::query()
-            ->with(['user:id,name', 'tryout:id,title']) // Eager load (dioptimalkan)
+            ->with(['user:id,name', 'tryout:id,title'])
             ->when($this->search, function ($query) {
-                // Pencarian
                 $query->where(function ($q) {
                     $q->where('review_text', 'like', '%' . $this->search . '%')
                         ->orWhereHas('user', function ($uq) {
@@ -63,71 +44,57 @@ class ReviewsManage extends Component
                         });
                 });
             })
-            ->when($this->filterStatus, function ($query) {
-                // Filter berdasarkan status
+            ->when($this->filterStatus !== 'all', function ($query) {
                 if ($this->filterStatus === 'published') {
                     $query->where('is_published', true);
                 } elseif ($this->filterStatus === 'hidden') {
                     $query->where('is_published', false);
                 }
-                // Jika 'all', tidak perlu filter
             })
-            // PENGURUTAN: Tetap 'desc' agar review terbaru muncul paling atas (sesuai permintaan).
+            ->when($this->showTrashed, function ($query) {
+                $query->onlyTrashed(); // Menampilkan data yang di-Soft Delete
+            }, function ($query) {
+                $query->whereNull('deleted_at'); // Menampilkan data Aktif
+            })
             ->orderBy('created_at', 'desc') 
-            ->paginate(10); // Pagination
+            ->paginate($this->perPage);
 
         return view('livewire.admin.reviews-manage', [
             'reviews' => $reviews,
-        ])->layout('layouts.admin'); // Menggunakan layout admin
+        ])->layout('layouts.admin');
     }
 
-    /**
-     * [LOGIKA UTAMA]
-     * Toggle status 'is_published' dari sebuah review.
-     * Dipanggil langsung dari tombol di tabel.
-     */
-    public function toggleStatus(Review $review)
+    public function toggleStatus($id)
     {
         try {
-            $review->is_published = !$review->is_published; // Balikkan nilainya
-            $review->save();
+            // withTrashed() agar status bisa diubah walau data ada di tab Terhapus
+            $review = Review::withTrashed()->findOrFail($id); 
+            $review->update(['is_published' => !$review->is_published]);
             session()->flash('success', 'Status review berhasil diperbarui.');
         } catch (\Exception $e) {
             session()->flash('error', 'Gagal memperbarui status: ' . $e->getMessage());
         }
     }
 
-    /**
-     * Menampilkan modal konfirmasi penghapusan.
-     */
-    public function confirmDelete($id)
-    {
-        $this->reviewToDelete = $id;
-        $this->confirmingDeletion = true;
-    }
-
-    /**
-     * Membatalkan proses penghapusan.
-     */
-    public function cancelDelete()
-    {
-        $this->confirmingDeletion = false;
-        $this->reviewToDelete = null;
-    }
-
-    /**
-     * Menghapus review secara permanen.
-     */
-    public function delete()
+    public function softDeleteReview($id)
     {
         try {
-            Review::findOrFail($this->reviewToDelete)->delete();
-            session()->flash('success', 'Review berhasil dihapus.');
+            $review = Review::findOrFail($id);
+            $review->delete(); // Eksekusi Soft Delete
+            session()->flash('success', 'Review berhasil di-Soft Delete.');
         } catch (\Exception $e) {
             session()->flash('error', 'Gagal menghapus review: ' . $e->getMessage());
         }
-        
-        $this->confirmingDeletion = false;
-        $this->reviewToDelete = null;
+    }
+
+    public function restoreReview($id)
+    {
+        try {
+            $review = Review::withTrashed()->findOrFail($id);
+            $review->restore();
+            session()->flash('success', 'Review berhasil dipulihkan.');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal memulihkan review: ' . $e->getMessage());
+        }
     }
 }

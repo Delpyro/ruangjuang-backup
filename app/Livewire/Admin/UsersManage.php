@@ -14,28 +14,20 @@ class UsersManage extends Component
 {
     use WithPagination, WithFileUploads;
 
-    // Menentukan tema pagination menjadi Tailwind CSS
     protected $paginationTheme = 'tailwind';
 
-    public $name, $slug, $email, $phone_number, $role = 'user', $status = 'active', $is_active = true, $image, $password;
+    public $name, $slug, $email, $phone_number, $status = 'active', $is_active = true, $image, $password;
+    
+    // Role di-hardcode ke 'user' karena Admin tidak boleh membuat/mengubah role jadi Admin
+    public $role = 'user'; 
+
     public $userId;
     public $isEdit = false;
     public $showModal = false;
-    public $confirmingDeletion = false;
-    public $userToDelete;
     
-    // Tambahkan untuk konfirmasi delete permanen
-    public $confirmingForceDelete = false;
-    public $userToForceDelete;
     public $currentImage;
-
-    // Untuk search
     public $search = '';
-    
-    // Property untuk error message
     public $errorMessage = '';
-
-    // Tambahkan property untuk showTrashed
     public $showTrashed = false;
 
     protected $queryString = ['search'];
@@ -45,7 +37,6 @@ class UsersManage extends Component
         $rules = [
             'name' => 'required|string|max:255',
             'phone_number' => 'nullable|string|max:20',
-            'role' => 'required|in:admin,user',
             'status' => 'required|string',
             'is_active' => 'boolean',
             'image' => 'nullable|image|max:1024',
@@ -77,11 +68,10 @@ class UsersManage extends Component
                       ->orWhere('phone_number', 'like', '%' . $this->search . '%');
                 });
             })
-            // Filter sesuai tab yang dipilih
             ->when($this->showTrashed, function ($query) {
-                $query->onlyTrashed(); // Hanya tampilkan yang terhapus (tab Terhapus)
+                $query->onlyTrashed(); 
             }, function ($query) {
-                $query->whereNull('deleted_at'); // Hanya tampilkan yang TIDAK terhapus (tab Aktif)
+                $query->whereNull('deleted_at'); 
             })
             ->latest()
             ->paginate(10);
@@ -112,8 +102,8 @@ class UsersManage extends Component
 
     public function resetForm()
     {
-        $this->reset(['name', 'slug', 'email', 'phone_number', 'role', 'status', 'is_active', 'password', 'image', 'userId', 'isEdit', 'currentImage', 'errorMessage']);
-        $this->role = 'user';
+        $this->reset(['name', 'slug', 'email', 'phone_number', 'status', 'is_active', 'password', 'image', 'userId', 'isEdit', 'currentImage', 'errorMessage']);
+        $this->role = 'user'; // Paksa role default
         $this->status = 'active';
         $this->is_active = true;
     }
@@ -129,7 +119,7 @@ class UsersManage extends Component
             'slug' => $slug,
             'email' => $this->email,
             'phone_number' => $this->phone_number,
-            'role' => $this->role,
+            'role' => 'user', // Memastikan bahwa role hanya bisa 'user'
             'status' => $this->status,
             'is_active' => $this->is_active,
             'password' => Hash::make($this->password),
@@ -139,18 +129,18 @@ class UsersManage extends Component
         $this->resetForm();
         $this->closeModal();
         session()->flash('success', 'User berhasil ditambahkan.');
+        return $this->redirect(request()->header('Referer')); // Reload agar SweetAlert Layout muncul
     }
 
     public function edit($id)
     {
-        // Menggunakan withTrashed() agar bisa mengedit user yang soft delete
         $user = User::withTrashed()->findOrFail($id); 
         $this->userId = $id;
         $this->name = $user->name;
         $this->slug = $user->slug;
         $this->email = $user->email;
         $this->phone_number = $user->phone_number;
-        $this->role = $user->role;
+        // Role TIDAK di-load karena admin tidak boleh edit role
         $this->status = $user->status;
         $this->is_active = $user->is_active;
         $this->currentImage = $user->image;
@@ -160,9 +150,7 @@ class UsersManage extends Component
     {
         $this->validate();
 
-        // Menggunakan withTrashed() agar bisa mengupdate user yang soft delete
         $user = User::withTrashed()->findOrFail($this->userId);
-
         $slug = Str::slug($this->name);
         
         $updateData = [
@@ -170,7 +158,7 @@ class UsersManage extends Component
             'slug' => $slug,
             'email' => $this->email,
             'phone_number' => $this->phone_number,
-            'role' => $this->role,
+            // Role dihilangkan dari updateData agar tidak terganti
             'status' => $this->status,
             'is_active' => $this->is_active,
         ];
@@ -191,77 +179,29 @@ class UsersManage extends Component
         $this->resetForm();
         $this->closeModal();
         session()->flash('success', 'User berhasil diperbarui.');
+        return $this->redirect(request()->header('Referer')); // Reload agar SweetAlert Layout muncul
     }
 
-    public function confirmDelete($id)
-    {
-        $this->errorMessage = '';
-        $this->confirmingDeletion = true;
-        $this->userToDelete = $id;
-    }
-
-    public function cancelDelete()
-    {
-        $this->confirmingDeletion = false;
-        $this->userToDelete = null;
-        $this->errorMessage = '';
-    }
-
-    public function delete()
+    // --- METHOD SOFT DELETE (Return Array untuk SweetAlert) ---
+    public function softDelete($id)
     {
         try {
-            $user = User::findOrFail($this->userToDelete);
-            $user->delete();
-            
-            $this->confirmingDeletion = false;
-            $this->userToDelete = null;
-            session()->flash('success', 'User berhasil dihapus (soft delete).');
+            $user = User::findOrFail($id);
+            $user->delete(); 
+            return ['status' => 'success', 'message' => 'User berhasil di-soft delete dan dipindah ke tab Terhapus.'];
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal menghapus user: ' . $e->getMessage());
+            return ['status' => 'error', 'message' => 'Gagal menghapus user: ' . $e->getMessage()];
         }
     }
 
-    // Method untuk konfirmasi force delete
-    public function confirmForceDelete($id)
-    {
-        $this->errorMessage = '';
-        $this->confirmingForceDelete = true;
-        $this->userToForceDelete = $id;
-    }
-
-    public function cancelForceDelete()
-    {
-        $this->confirmingForceDelete = false;
-        $this->userToForceDelete = null;
-        $this->errorMessage = '';
-    }
-
-    public function forceDelete()
-    {
-        try {
-            $user = User::withTrashed()->findOrFail($this->userToForceDelete);
-            
-            if ($user->image) {
-                Storage::disk('public')->delete($user->image);
-            }
-            
-            $user->forceDelete();
-            
-            $this->confirmingForceDelete = false;
-            $this->userToForceDelete = null;
-            session()->flash('success', 'User berhasil dihapus permanen.');
-        } catch (\Exception $e) {
-            session()->flash('error', 'Gagal menghapus permanen: ' . $e->getMessage());
-        }
-    }
-
+    // --- METHOD RESTORE (Return Array untuk SweetAlert) ---
     public function restore($id)
     {
         try {
             User::withTrashed()->findOrFail($id)->restore();
-            session()->flash('success', 'User berhasil direstore.');
+            return ['status' => 'success', 'message' => 'User berhasil direstore dan aktif kembali.'];
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal merestore user: ' . $e->getMessage());
+            return ['status' => 'error', 'message' => 'Gagal merestore user: ' . $e->getMessage()];
         }
     }
 }
