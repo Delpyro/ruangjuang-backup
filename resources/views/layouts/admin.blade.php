@@ -40,7 +40,8 @@
                 <i class="fas fa-box w-5 h-5 mr-3"></i> Bundles
             </a>
             
-            <a href="{{ route('admin.tryouts.index') }}" class="flex items-center px-3 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors duration-200 {{ request()->routeIs('admin.tryouts') ? 'bg-blue-100 text-blue-700' : '' }}">
+            {{-- ✨ PERBAIKAN: Menambahkan .* pada routeIs agar menyala saat masuk halaman create/edit --}}
+            <a href="{{ route('admin.tryouts.index') }}" class="flex items-center px-3 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors duration-200 {{ request()->routeIs('admin.tryouts.*') ? 'bg-blue-100 text-blue-700' : '' }}">
                 <i class="fas fa-edit w-5 h-5 mr-3"></i> Tryouts
             </a>
             
@@ -56,7 +57,8 @@
                 <i class="fas fa-star w-5 h-5 mr-3"></i> Reviews
             </a>
 
-            <a href="{{ route('admin.promo.index') }}" class="flex items-center px-3 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors duration-200 {{ request()->routeIs('admin.promos') ? 'bg-blue-100 text-blue-700' : '' }}">
+            {{-- ✨ PERBAIKAN: Menyesuaikan routeIs dengan nama route yang benar di web.php --}}
+            <a href="{{ route('admin.promo.index') }}" class="flex items-center px-3 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors duration-200 {{ request()->routeIs('admin.promo.*') ? 'bg-blue-100 text-blue-700' : '' }}">
                 <i class="fas fa-tags w-5 h-5 mr-3"></i> Promo Terlaris
             </a>
         </nav>

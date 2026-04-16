@@ -1,14 +1,14 @@
 <?php
 
 use App\Livewire\Forms\LoginForm;
-use Illuminate\Support\Facades\Auth; // <-- Saya tambahkan ini untuk jaga-jaga, sepertinya Anda memerlukannya
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\Title; // <-- 1. TAMBAHKAN BARIS INI
+use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
 
 new #[Layout('layouts.guest', ['vite_assets' => ['resources/css/auth.css', 'resources/js/auth/login.js']])]
-#[Title('Masuk')] // <-- 2. TAMBAHKAN BARIS INI
+#[Title('Masuk')]
 class extends Component
 {
     public LoginForm $form;
@@ -23,12 +23,20 @@ class extends Component
 
         $user = Auth::user();
 
+        // Cek jika yang login adalah Owner
+        if ($user->role === 'owner') {
+            $this->redirectIntended(default: route('owner.dashboard', absolute: false), navigate: true);
+            return;
+        }
+
+        // Cek jika yang login adalah Admin
         if ($user->role === 'admin') {
             $this->redirectIntended(default: '/admin/dashboard', navigate: true);
             return;
         }
 
-        $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
+        // Jika bukan keduanya (User biasa)
+        $this->redirectIntended(default: route('customers.dashboard', absolute: false), navigate: true);
     }
 }; ?>
 

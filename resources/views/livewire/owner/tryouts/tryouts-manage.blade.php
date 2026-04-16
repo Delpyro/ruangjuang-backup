@@ -9,7 +9,7 @@
             </a>
         </div>
 
-        {{-- FLASH MESSAGE DENGAN ANIMASI ALPINE.JS (AUTO DISMISS 3 DETIK) --}}
+        {{-- FLASH MESSAGE DENGAN ANIMASI ALPINE.JS --}}
         @if (session()->has('success'))
             <div x-data="{ show: true }" x-show="show" x-transition.duration.500ms x-init="setTimeout(() => show = false, 3000)" class="mb-6 p-4 bg-green-50 text-green-800 rounded-lg border border-green-200 flex items-center justify-between shadow-sm">
                 <div class="flex items-center">
@@ -82,7 +82,6 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse ($tryouts as $index => $tryout)
-                        {{-- WIRE:KEY SANGAT PENTING UNTUK REAL-TIME TAB SWAP --}}
                         <tr wire:key="tryout-{{ $tryout->id }}" class="hover:bg-gray-50 transition-colors duration-150 {{ $tryout->trashed() ? 'bg-red-50' : '' }}">
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ ($tryouts->currentPage() - 1) * $tryouts->perPage() + $index + 1 }}</td>
                             <td class="px-6 py-4 whitespace-nowrap">
@@ -126,7 +125,7 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center">
                                 @if(!$tryout->trashed())
-                                    <a href="{{ route('owner.tryouts.questions', $tryout->id) }}" style="margin: auto" class="text-emerald-600 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm gap-2 w-fit">
+                                    <a href="{{ route('owner.tryouts.questions', $tryout->id) }}" style="margin: auto" class="text-green-600 hover:text-green-900 bg-green-50 hover:bg-green-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm gap-2 w-fit">
                                         <i class="fa-solid fa-square-plus w-4 h-4"></i>
                                         <span>Soal</span>
                                     </a>
@@ -137,22 +136,16 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div class="flex space-x-2">
                                     @if(!$tryout->trashed())
-                                        {{-- TOMBOL EDIT (INDIGO) --}}
                                         <a href="{{ route('owner.tryouts.edit', $tryout->id) }}" class="text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm">
                                             <i class="fa-solid fa-pen-to-square w-4 h-4 mr-1"></i> Edit
                                         </a>
-
-                                        {{-- TOGGLE STATUS --}}
                                         <button wire:click="toggleStatus({{ $tryout->id }})" class="text-{{ $tryout->is_active ? 'yellow' : 'green' }}-600 hover:text-{{ $tryout->is_active ? 'yellow' : 'green' }}-900 bg-{{ $tryout->is_active ? 'yellow' : 'green' }}-50 hover:bg-{{ $tryout->is_active ? 'yellow' : 'green' }}-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm">
                                             <i class="fa-solid {{ $tryout->is_active ? 'fa-pause' : 'fa-play' }} w-4 h-4 mr-1"></i> {{ $tryout->is_active ? 'Draft' : 'Public' }}
                                         </button>
-
-                                        {{-- TOGGLE HOTS --}}
                                         <button wire:click="toggleHots({{ $tryout->id }})" class="text-{{ $tryout->is_hots ? 'gray' : 'red' }}-600 hover:text-{{ $tryout->is_hots ? 'gray' : 'red' }}-900 bg-{{ $tryout->is_hots ? 'gray' : 'red' }}-50 hover:bg-{{ $tryout->is_hots ? 'gray' : 'red' }}-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm">
                                             <i class="fa-solid fa-star w-4 h-4 mr-1"></i> {{ $tryout->is_hots ? 'Unmark HOTS' : 'Mark HOTS' }}
                                         </button>
                                         
-                                        {{-- TOMBOL SOFT DELETE (AMBER) --}}
                                         <button type="button" x-data x-on:click="
                                             Swal.fire({
                                                 title: 'Soft Delete Tryout?',
@@ -165,14 +158,13 @@
                                                 cancelButtonText: 'Batal'
                                             }).then((result) => {
                                                 if (result.isConfirmed) {
-                                                    $wire.softDelete({{ $tryout->id }})
+                                                    $wire.softDeleteTryout({{ $tryout->id }})
                                                 }
                                             })
                                         " class="text-amber-600 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm">
                                             <i class="fa-solid fa-box-archive w-4 h-4 mr-1"></i> Soft Delete
                                         </button>
                                     @else
-                                        {{-- TOMBOL RESTORE (EMERALD) --}}
                                         <button type="button" x-data x-on:click="
                                             Swal.fire({
                                                 title: 'Pulihkan Tryout?',
@@ -188,28 +180,27 @@
                                                     $wire.restoreTryout({{ $tryout->id }})
                                                 }
                                             })
-                                        " class="text-emerald-600 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm">
+                                        " class="text-green-600 hover:text-green-900 bg-green-50 hover:bg-green-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm">
                                             <i class="fa-solid fa-rotate-left w-4 h-4 mr-1"></i> Restore
                                         </button>
 
-                                        {{-- TOMBOL HAPUS PERMANEN (MERAH DENGAN TONG SAMPAH) --}}
+                                        {{-- ✨ HAPUS PERMANEN (HANYA OWNER) ✨ --}}
                                         <button type="button" x-data x-on:click="
                                             Swal.fire({
                                                 title: 'HAPUS PERMANEN?',
-                                                text: 'TIDAK BISA DIKEMBALIKAN SAMA SEKALI!',
+                                                text: 'Tindakan ini tidak bisa dibatalkan!',
                                                 icon: 'error',
                                                 showCancelButton: true,
                                                 confirmButtonColor: '#991b1b',
                                                 cancelButtonColor: '#6b7280',
-                                                confirmButtonText: 'SAYA YAKIN, HAPUS PERMANEN!',
-                                                cancelButtonText: 'Batal'
+                                                confirmButtonText: 'Ya, Hapus Permanen!'
                                             }).then((result) => {
                                                 if (result.isConfirmed) {
                                                     $wire.forceDeleteTryout({{ $tryout->id }})
                                                 }
                                             })
-                                        " class="text-red-700 hover:text-red-900 font-bold bg-red-100 hover:bg-red-200 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm">
-                                            <i class="fa-solid fa-trash-can w-4 h-4 mr-1"></i> Hapus Permanen
+                                        " class="text-red-800 hover:text-red-900 font-bold bg-red-100 hover:bg-red-200 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm">
+                                            <i class="fa-solid fa-trash-can w-4 h-4 mr-1"></i> Permanen
                                         </button>
                                     @endif
                                 </div>
@@ -234,7 +225,7 @@
         </div>
     </div>
 
-    {{-- MODAL LAMA TETAP DIPERTAHANKAN (Sesuai Permintaan) --}}
+    {{-- MODAL LAMA BAWAAN (TETAP DIPERTAHANKAN) --}}
     @if($showModal)
         <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center" aria-labelledby="modal-title" role="dialog" aria-modal="true">
             <div class="fixed inset-0 bg-gray-500 bg-opacity-20 transition-opacity backdrop-blur-sm" aria-hidden="true"></div>

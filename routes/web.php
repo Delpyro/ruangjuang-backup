@@ -53,7 +53,7 @@ use App\Livewire\Owner\PromoManage as OwnerPromoManage;
 use App\Livewire\Owner\TransactionsIndex as OwnerTransactionsIndex; 
 use App\Livewire\Owner\TransactionsDetail as OwnerTransactionsDetail;
 use App\Livewire\Owner\UsersManage as OwnerUsersManage;
-use App\Livewire\Owner\Question\QuestionManage as OwnerQuestionManage; // ✨ BARU: Import Question Owner ✨
+use App\Livewire\Owner\Question\QuestionManage as OwnerQuestionManage;
 
 // --- CONTROLLER IMPORTS ---
 use App\Http\Controllers\Admin\TinyMceController;
@@ -237,7 +237,6 @@ Route::middleware(['auth', 'verified', 'owner'])->prefix('owner')->name('owner.'
         Route::get('/edit/{id}', OwnerTryoutsEdit::class)->name('edit');
     });
     
-    // ✨ UBAH: Gunakan OwnerQuestionManage untuk rute Owner ✨
     Route::get('/tryouts/{tryoutId}/questions', OwnerQuestionManage::class)->name('tryouts.questions');
     
     Route::get('question-categories', OwnerQuestionCategoriesManage::class)->name('question-categories');
