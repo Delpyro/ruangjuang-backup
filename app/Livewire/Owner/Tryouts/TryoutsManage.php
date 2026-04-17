@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\Owner\Tryouts; // Namespace Owner
+namespace App\Livewire\Owner\Tryouts;
 
 use App\Models\Tryout;
 use Illuminate\Support\Str;
@@ -16,9 +16,8 @@ class TryoutsManage extends Component
     public $tryoutId;
     public $isEdit = false;
     public $showModal = false;
-    public $confirmingDeletion = false;
-    public $tryoutToDelete;
     
+    // Variabel filter
     public $showTrashed = false;
     public $search = '';
     public $filterCategory = ''; 
@@ -82,7 +81,7 @@ class TryoutsManage extends Component
         ])->layout('layouts.owner');
     }
 
-    // --- FUNGSI MODAL BAWAAN ---
+    // --- MANAJEMEN MODAL & FORM ---
     public function openModal($edit = false, $id = null) {
         $this->resetForm(); 
         $this->isEdit = $edit;
@@ -102,6 +101,7 @@ class TryoutsManage extends Component
         $this->is_active = true;
     }
 
+    // --- CRUD ---
     public function create() {
         $this->validate();
         Tryout::create([
@@ -156,63 +156,29 @@ class TryoutsManage extends Component
         session()->flash('success', 'Tryout berhasil diperbarui.');
     }
 
-    // --- FUNGSI KONFIRMASI HAPUS BAWAAN ---
-    public function confirmDelete($id) {
-        $this->confirmingDeletion = true; 
-        $this->tryoutToDelete = $id;
-    }
-
-    public function cancelDelete() {
-        $this->confirmingDeletion = false; 
-        $this->tryoutToDelete = null;
-    }
-
-
-    // --- FUNGSI PENGHAPUSAN DAN PEMULIHAN (OWNER) ---
-
-    // Fungsi Delete Asli (dari konfirmasi modal bawaan)
-    public function delete() {
-        try {
-            $tryout = Tryout::findOrFail($this->tryoutToDelete);
-            $tryout->delete(); 
-            $this->confirmingDeletion = false; 
-            $this->tryoutToDelete = null;
-            session()->flash('success', 'Tryout berhasil diarsipkan (soft delete).');
-        } catch (\Exception $e) { 
-            session()->flash('error', 'Gagal menghapus: ' . $e->getMessage()); 
-        }
-    }
-
-    // ✨ PERBAIKAN: Fungsi khusus untuk dipanggil via SweetAlert ✨
-    public function softDelete($id) {
+    // --- HAPUS & PULIHKAN (Dipanggil oleh SweetAlert di Blade) ---
+    public function softDeleteTryout($id) {
         try {
             $tryout = Tryout::findOrFail($id);
             $tryout->delete(); 
-            session()->flash('success', 'Tryout berhasil di-Soft Delete.');
+            session()->flash('success', 'Tryout berhasil diarsipkan.');
         } catch (\Exception $e) { 
             session()->flash('error', 'Gagal menghapus: ' . $e->getMessage()); 
         }
     }
 
-    // Fungsi Restore Asli
-    public function restore($id) {
+    public function restoreTryout($id) {
         try {
             Tryout::withTrashed()->findOrFail($id)->restore();
-            session()->flash('success', 'Tryout berhasil direstore.');
+            session()->flash('success', 'Tryout berhasil dipulihkan.');
         } catch (\Exception $e) { 
-            session()->flash('error', 'Gagal merestore: ' . $e->getMessage()); 
+            session()->flash('error', 'Gagal memulihkan: ' . $e->getMessage()); 
         }
     }
 
-    // ✨ PERBAIKAN: Wrapper Restore untuk dipanggil via SweetAlert ✨
-    public function restoreTryout($id) {
-        $this->restore($id);
-    }
-
-    // Fungsi Force Delete Asli
-    public function forceDelete($id) {
+    public function forceDeleteTryout($id) {
         if (auth()->user()->role !== 'owner') {
-            session()->flash('error', 'Hanya Owner yang dapat menghapus permanen.');
+            session()->flash('error', 'Akses ditolak.');
             return;
         }
 
@@ -224,12 +190,6 @@ class TryoutsManage extends Component
             session()->flash('error', 'Gagal menghapus permanen: ' . $e->getMessage());
         }
     }
-
-    // ✨ PERBAIKAN: Wrapper Force Delete untuk dipanggil via SweetAlert ✨
-    public function forceDeleteTryout($id) {
-        $this->forceDelete($id);
-    }
-
 
     // --- TOGGLES ---
     public function toggleStatus($id) {
