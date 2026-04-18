@@ -132,7 +132,18 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div class="flex space-x-2">
+                                    {{-- ✨ TOMBOL DETAIL DITAMBAHKAN ✨ (Muncul untuk semua user, baik aktif maupun terhapus) --}}
+                                    <a href="{{ url('/owner/user/detail/' . $user->id) }}"
+                                        class="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm" title="Detail User">
+                                        <i class="fa-solid fa-eye w-4 h-4 mr-1"></i> Detail
+                                    </a>
+
                                     @if(!$user->trashed())
+                                        <a href="{{ url('/owner/user/akses/' . $user->id) }}"
+                                            class="text-cyan-600 hover:text-cyan-900 bg-cyan-50 hover:bg-cyan-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm" title="Atur Akses User">
+                                            <i class="fa-solid fa-lock w-4 h-4 mr-1"></i> Akses
+                                        </a>
+                                        
                                         {{-- Tombol Edit --}}
                                         <button
                                             wire:click="openModal(true, {{ $user->id }})"

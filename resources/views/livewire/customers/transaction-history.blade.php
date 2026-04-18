@@ -89,7 +89,7 @@
                                    class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors"
                                    target="_blank"> <!-- Buka di tab baru -->
                                    <i class="fas fa-file-invoice mr-1.5 mt-0.5"></i> Invoice
-                                </a>
+                                </a> 
                             </td>
                         </tr>
                     @empty

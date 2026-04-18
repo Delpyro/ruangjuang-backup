@@ -54,6 +54,8 @@ use App\Livewire\Owner\TransactionsIndex as OwnerTransactionsIndex;
 use App\Livewire\Owner\TransactionsDetail as OwnerTransactionsDetail;
 use App\Livewire\Owner\UsersManage as OwnerUsersManage;
 use App\Livewire\Owner\Question\QuestionManage as OwnerQuestionManage;
+use App\Livewire\Owner\UserAkses as OwnerUserAkses;
+use App\Livewire\Owner\OwnerUserDetail;
 
 // --- CONTROLLER IMPORTS ---
 use App\Http\Controllers\Admin\TinyMceController;
@@ -222,6 +224,13 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
 Route::middleware(['auth', 'verified', 'owner'])->prefix('owner')->name('owner.')->group(function () {
     
     Route::get('dashboard', OwnerDashboardManage::class)->name('dashboard');
+
+    // --- MANAJEMEN USER ---
+    Route::get('user/akses', OwnerUserAkses::class)->name('user.akses'); 
+    Route::get('user/akses/{id}', OwnerUserAkses::class)->name('user.akses.detail');
+    
+    // ✨ ROUTE DETAIL USER DITAMBAHKAN DI SINI ✨
+    Route::get('user/detail/{id}', OwnerUserDetail::class)->name('user.detail');
 
     Route::post('tinymce/upload/image', [TinyMceController::class, 'uploadImage'])->name('tinymce.upload.image');
 
