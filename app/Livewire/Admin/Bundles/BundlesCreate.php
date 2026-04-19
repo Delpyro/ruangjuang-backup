@@ -46,6 +46,12 @@ class BundlesCreate extends Component
         'expired_at.after' => 'Tanggal kedaluwarsa harus setelah hari ini.',
     ];
 
+    // ✨ FITUR BARU: Dynamic Route Prefix
+    public function getRolePrefixProperty()
+    {
+        return auth()->user()->role; // Output: 'admin' atau 'owner'
+    }
+
     public function loadTryouts()
     {
         $query = Tryout::active();
@@ -114,7 +120,9 @@ class BundlesCreate extends Component
             $bundle->tryouts()->attach($this->selected_tryout_ids);
 
             session()->flash('success', 'Bundle baru berhasil dibuat!');
-            return redirect()->route('admin.bundles.index'); // Redirect Admin
+            
+            // ✨ DYNAMIC REDIRECT ✨
+            return redirect()->route($this->rolePrefix . '.bundles.index');
 
         } catch (\Exception $e) {
             session()->flash('error', 'Terjadi kesalahan saat menyimpan bundle: ' . $e->getMessage());

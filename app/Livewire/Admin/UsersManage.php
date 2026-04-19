@@ -204,4 +204,21 @@ class UsersManage extends Component
             return ['status' => 'error', 'message' => 'Gagal merestore user: ' . $e->getMessage()];
         }
     }
+
+    public function forceDelete($id)
+    {
+        try {
+            $user = User::withTrashed()->findOrFail($id);
+            
+            // Hapus gambar fisik dari storage jika ada
+            if ($user->image) {
+                Storage::disk('public')->delete($user->image);
+            }
+            
+            $user->forceDelete();
+            return ['status' => 'success', 'message' => 'User beserta datanya berhasil dihapus secara PERMANEN.'];
+        } catch (\Exception $e) {
+            return ['status' => 'error', 'message' => 'Gagal menghapus permanen: ' . $e->getMessage()];
+        }
+    }
 }

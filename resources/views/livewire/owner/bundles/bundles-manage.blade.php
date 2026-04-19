@@ -132,7 +132,7 @@
                                                     $wire.restoreBundle({{ $bundle->id }})
                                                 }
                                             })
-                                        "
+                                        " 
                                         class="text-emerald-600 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm"
                                     >
                                         <i class="fa-solid fa-rotate-left w-4 h-4 mr-1"></i> Restore

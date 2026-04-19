@@ -223,41 +223,56 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
 */
 Route::middleware(['auth', 'verified', 'owner'])->prefix('owner')->name('owner.')->group(function () {
     
-    Route::get('dashboard', OwnerDashboardManage::class)->name('dashboard');
+    Route::get('dashboard', DashboardManage::class)->name('dashboard');
+    Route::get('users', UsersManage::class)->name('users');
 
-    // --- MANAJEMEN USER ---
-    Route::get('user/akses', OwnerUserAkses::class)->name('user.akses'); 
-    Route::get('user/akses/{id}', OwnerUserAkses::class)->name('user.akses.detail');
-    
-    // ✨ ROUTE DETAIL USER DITAMBAHKAN DI SINI ✨
+    Route::get('user/akses', UserAkses::class)->name('user.akses'); 
+    Route::get('user/akses/{id}', UserAkses::class)->name('user.akses.detail');
     Route::get('user/detail/{id}', OwnerUserDetail::class)->name('user.detail');
+    
+    Route::get('assign-tryout', AssignTryout::class)->name('assign-tryout');
+    
+    Route::get('question-categories', QuestionCategoriesManage::class)->name('question-categories');
+    Route::get('question-sub-categories', QuestionSubCategoriesManage::class)->name('question-sub-categories');
 
     Route::post('tinymce/upload/image', [TinyMceController::class, 'uploadImage'])->name('tinymce.upload.image');
 
-    Route::prefix('bundles')->name('bundles.')->group(function () {
-        Route::get('/', OwnerBundlesManage::class)->name('index');
-        Route::get('/create', OwnerBundlesCreate::class)->name('create');
-        Route::get('/edit/{bundle:slug}', OwnerBundlesEdit::class)->name('edit');
-    });
-
     Route::prefix('tryouts')->name('tryouts.')->group(function () {
-        Route::get('/', OwnerTryoutsManage::class)->name('index');
-        Route::get('/create', OwnerTryoutsCreate::class)->name('create');
-        Route::get('/edit/{id}', OwnerTryoutsEdit::class)->name('edit');
+        Route::get('/', TryoutsManage::class)->name('index');
+        Route::get('/create', TryoutsCreate::class)->name('create');
+        Route::get('/edit/{id}', TryoutsEdit::class)->name('edit');
     });
     
-    Route::get('/tryouts/{tryoutId}/questions', OwnerQuestionManage::class)->name('tryouts.questions');
-    
-    Route::get('question-categories', OwnerQuestionCategoriesManage::class)->name('question-categories');
-    Route::get('question-sub-categories', OwnerQuestionSubCategoriesManage::class)->name('question-sub-categories');
-    Route::get('reviews', OwnerReviewsManage::class)->name('reviews.index');
-    Route::get('promo', OwnerPromoManage::class)->name('promo.index');
-    Route::get('users', OwnerUsersManage::class)->name('users');
+    Route::get('/tryouts/{tryoutId}/questions', QuestionManage::class)->name('tryouts.questions');
 
-    Route::prefix('transactions')->name('transactions.')->group(function () {
-        Route::get('/', OwnerTransactionsIndex::class)->name('index'); 
-        Route::get('/detail/{type}/{id}', OwnerTransactionsDetail::class)->name('detail');
+    Route::prefix('bundles')->name('bundles.')->group(function () {
+        Route::get('/', BundlesManage::class)->name('index');
+        Route::get('/create', BundlesCreate::class)->name('create');
+        Route::get('/edit/{bundle:slug}', BundlesEdit::class)->name('edit');
     });
+
+    Route::get('reviews', ReviewsManage::class)->name('reviews.index');
+    Route::get('promo', PromoManage::class)->name('promo.index');
+    
+    Route::prefix('transactions')->name('transactions.')->group(function () {
+        Route::get('/', TransactionsIndex::class)->name('index'); 
+        Route::get('/detail/{type}/{id}', TransactionsDetail::class)->name('detail'); 
+        Route::get('/{id}', function ($id) {
+            $transaction = \App\Models\Transaction::with(['user', 'tryout'])->findOrFail($id);
+            return view('admin.transactions.detail', compact('transaction'));
+        })->name('show'); 
+
+        Route::post('/{orderId}/sync', function ($orderId) {
+            $midtransService = app(\App\Services\MidtransService::class);
+            $result = $midtransService->getStatus($orderId);
+            if ($result['success']) {
+                return response()->json(['success' => true, 'message' => 'Status berhasil disinkronisasi', 'data' => $result]);
+            }
+            return response()->json(['success' => false, 'message' => 'Gagal menyinkronisasi status', 'error' => $result['error']], 400);
+        })->name('sync');
+    });
+
+
 });
 
 /*

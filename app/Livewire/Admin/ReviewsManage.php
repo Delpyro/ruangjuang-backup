@@ -14,7 +14,7 @@ class ReviewsManage extends Component
 
     public $search = '';
     public $filterStatus = 'all'; // 'all', 'published', 'hidden'
-    public $showTrashed = false; // Tab Aktif/Terhapus
+    public $showTrashed = false; 
     public $perPage = 10;
 
     protected $queryString = [
@@ -23,7 +23,6 @@ class ReviewsManage extends Component
         'showTrashed' => ['except' => false],
     ];
 
-    // Reset pagination agar data tidak nyangkut saat filter berubah
     public function updatedSearch() { $this->resetPage(); }
     public function updatedFilterStatus() { $this->resetPage(); }
     public function updatedShowTrashed() { $this->resetPage(); }
@@ -52,9 +51,9 @@ class ReviewsManage extends Component
                 }
             })
             ->when($this->showTrashed, function ($query) {
-                $query->onlyTrashed(); // Menampilkan data yang di-Soft Delete
+                $query->onlyTrashed();
             }, function ($query) {
-                $query->whereNull('deleted_at'); // Menampilkan data Aktif
+                $query->whereNull('deleted_at');
             })
             ->orderBy('created_at', 'desc') 
             ->paginate($this->perPage);
@@ -67,12 +66,13 @@ class ReviewsManage extends Component
     public function toggleStatus($id)
     {
         try {
-            // withTrashed() agar status bisa diubah walau data ada di tab Terhapus
             $review = Review::withTrashed()->findOrFail($id); 
             $review->update(['is_published' => !$review->is_published]);
-            session()->flash('success', 'Status review berhasil diperbarui.');
+            
+            // Mengirim toast sukses
+            $this->dispatch('swal-toast', icon: 'success', title: 'Berhasil!', text: 'Status publikasi diperbarui.');
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal memperbarui status: ' . $e->getMessage());
+            $this->dispatch('swal-toast', icon: 'error', title: 'Gagal!', text: 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
 
@@ -80,10 +80,10 @@ class ReviewsManage extends Component
     {
         try {
             $review = Review::findOrFail($id);
-            $review->delete(); // Eksekusi Soft Delete
-            session()->flash('success', 'Review berhasil di-Soft Delete.');
+            $review->delete();
+            return ['status' => 'success', 'message' => 'Review berhasil di-soft delete.'];
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal menghapus review: ' . $e->getMessage());
+            return ['status' => 'error', 'message' => 'Gagal menghapus review: ' . $e->getMessage()];
         }
     }
 
@@ -92,9 +92,24 @@ class ReviewsManage extends Component
         try {
             $review = Review::withTrashed()->findOrFail($id);
             $review->restore();
-            session()->flash('success', 'Review berhasil dipulihkan.');
+            return ['status' => 'success', 'message' => 'Review berhasil dipulihkan.'];
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal memulihkan review: ' . $e->getMessage());
+            return ['status' => 'error', 'message' => 'Gagal memulihkan review: ' . $e->getMessage()];
+        }
+    }
+
+    public function forceDeleteReview($id)
+    {
+        if (auth()->user()->role !== 'owner') {
+            return ['status' => 'error', 'message' => 'Akses ditolak! Hanya Owner yang dapat menghapus permanen.'];
+        }
+
+        try {
+            $review = Review::withTrashed()->findOrFail($id);
+            $review->forceDelete(); 
+            return ['status' => 'success', 'message' => 'Review berhasil dihapus secara permanen.'];
+        } catch (\Exception $e) {
+            return ['status' => 'error', 'message' => 'Gagal menghapus permanen: ' . $e->getMessage()];
         }
     }
 }

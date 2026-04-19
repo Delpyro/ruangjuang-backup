@@ -10,7 +10,7 @@ class QuestionCategoriesManage extends Component
 {
     use WithPagination;
 
-    public $name, $passing_grade = 100.00, $is_active = true;
+    public $name, $passing_grade = 100, $is_active = true;
     public $categoryId;
     public $isEdit = false;
     public $showModal = false;
@@ -26,7 +26,7 @@ class QuestionCategoriesManage extends Component
     {
         return [
             'name' => 'required|string|max:255',
-            'passing_grade' => 'required|numeric|min:0|max:200',
+            'passing_grade' => 'required|integer|min:0|max:200',
             'is_active' => 'boolean',
         ];
     }
@@ -55,7 +55,7 @@ class QuestionCategoriesManage extends Component
         ])->layout('layouts.admin');
     }
 
-    // --- MODAL CREATE & EDIT (Bawaan Asli) ---
+    // --- MODAL CREATE & EDIT ---
     public function openModal($edit = false, $id = null)
     {
         $this->resetForm();
@@ -77,7 +77,7 @@ class QuestionCategoriesManage extends Component
     public function resetForm()
     {
         $this->reset(['name', 'passing_grade', 'is_active', 'categoryId', 'isEdit']);
-        $this->passing_grade = 100.00;
+        $this->passing_grade = 100;
         $this->is_active = true;
     }
 
@@ -93,7 +93,9 @@ class QuestionCategoriesManage extends Component
 
         $this->resetForm();
         $this->closeModal();
-        session()->flash('success', 'Kategori pertanyaan berhasil ditambahkan.');
+        
+        // ✨ MENGGUNAKAN DISPATCH UNTUK SWEETALERT ✨
+        $this->dispatch('swal-toast', icon: 'success', title: 'Berhasil!', text: 'Kategori pertanyaan berhasil ditambahkan.');
     }
 
     public function edit($id)
@@ -119,10 +121,12 @@ class QuestionCategoriesManage extends Component
 
         $this->resetForm();
         $this->closeModal();
-        session()->flash('success', 'Kategori pertanyaan berhasil diperbarui.');
+        
+        // ✨ MENGGUNAKAN DISPATCH UNTUK SWEETALERT ✨
+        $this->dispatch('swal-toast', icon: 'success', title: 'Berhasil!', text: 'Kategori pertanyaan berhasil diperbarui.');
     }
 
-    // --- LOGIKA AKSI ADMIN (Hanya Soft Delete & Restore) ---
+    // --- LOGIKA AKSI ADMIN (MENGGUNAKAN RETURN ARRAY UNTUK SWEETALERT) ---
 
     private function hasSubCategories($categoryId)
     {
@@ -135,15 +139,14 @@ class QuestionCategoriesManage extends Component
         try {
             // Double check backend
             if ($this->hasSubCategories($id)) {
-                session()->flash('error', 'Kategori tidak dapat dihapus karena masih memiliki subkategori.');
-                return;
+                return ['status' => 'error', 'message' => 'Kategori tidak dapat dihapus karena masih memiliki subkategori.'];
             }
 
             $category = QuestionCategory::findOrFail($id);
             $category->delete();
-            session()->flash('success', 'Kategori pertanyaan berhasil di-Soft Delete.');
+            return ['status' => 'success', 'message' => 'Kategori berhasil di-soft delete.'];
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal menghapus kategori: ' . $e->getMessage());
+            return ['status' => 'error', 'message' => 'Gagal menghapus kategori: ' . $e->getMessage()];
         }
     }
 
@@ -151,9 +154,28 @@ class QuestionCategoriesManage extends Component
     {
         try {
             QuestionCategory::withTrashed()->findOrFail($id)->restore();
-            session()->flash('success', 'Kategori pertanyaan berhasil dipulihkan.');
+            return ['status' => 'success', 'message' => 'Kategori berhasil dipulihkan.'];
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal memulihkan kategori: ' . $e->getMessage());
+            return ['status' => 'error', 'message' => 'Gagal memulihkan kategori: ' . $e->getMessage()];
+        }
+    }
+
+    public function forceDeleteCategory($id)
+    {
+        if (auth()->user()->role !== 'owner') {
+            return ['status' => 'error', 'message' => 'Akses ditolak! Hanya Owner yang dapat menghapus permanen.'];
+        }
+
+        try {
+            if ($this->hasSubCategories($id)) {
+                return ['status' => 'error', 'message' => 'Kategori tidak dapat dihapus permanen karena masih memiliki subkategori.'];
+            }
+
+            $category = QuestionCategory::withTrashed()->findOrFail($id);
+            $category->forceDelete(); 
+            return ['status' => 'success', 'message' => 'Kategori beserta datanya berhasil dihapus permanen.'];
+        } catch (\Exception $e) {
+            return ['status' => 'error', 'message' => 'Gagal menghapus permanen: ' . $e->getMessage()];
         }
     }
 }

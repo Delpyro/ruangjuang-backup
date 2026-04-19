@@ -7,7 +7,6 @@
     @if (session('success'))
         <div class="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
             <div class="flex items-center">
-                {{-- SVG Checkmark -> Font Awesome: fa-circle-check --}}
                 <i class="fa-solid fa-circle-check w-5 h-5 text-green-600 mr-2"></i>
                 <span class="text-green-800 font-medium">{{ session('success') }}</span>
             </div>
@@ -17,7 +16,6 @@
     @if (session('error'))
         <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
             <div class="flex items-center">
-                {{-- SVG Xmark -> Font Awesome: fa-circle-xmark --}}
                 <i class="fa-solid fa-circle-xmark w-5 h-5 text-red-600 mr-2"></i>
                 <span class="text-red-800 font-medium">{{ session('error') }}</span>
             </div>
@@ -241,13 +239,11 @@
             <div class="text-sm text-gray-500">
                 @if($is_active)
                     <span class="inline-flex items-center text-green-600">
-                        {{-- SVG Checkmark -> Font Awesome: fa-check --}}
                         <i class="fa-solid fa-check w-4 h-4 mr-1"></i>
                         Bundle akan aktif dan dapat dibeli
                     </span>
                 @else
                     <span class="inline-flex items-center text-red-600">
-                        {{-- SVG Xmark -> Font Awesome: fa-xmark --}}
                         <i class="fa-solid fa-xmark w-4 h-4 mr-1"></i>
                         Bundle akan dinonaktifkan
                     </span>
@@ -257,11 +253,11 @@
 
         {{-- Action Buttons --}}
         <div class="flex justify-end gap-3 pt-6 border-t border-gray-200">
+            {{-- ✨ DYNAMIC ROUTE UNTUK TOMBOL BATAL ✨ --}}
             <a
-                href="{{ route('admin.bundles.index') }}"
+                href="{{ route($this->rolePrefix . '.bundles.index') }}"
                 class="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition duration-200 font-medium flex items-center"
             >
-                {{-- Font Awesome: fa-xmark --}}
                 <i class="fa-solid fa-xmark w-4 h-4 mr-2"></i> Batal
             </a>
             <button
@@ -269,9 +265,7 @@
                 class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200 font-medium shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 wire:loading.attr="disabled"
             >
-                {{-- SVG Checkmark -> Font Awesome: fa-check (Perbarui) --}}
                 <i wire:loading.remove class="fa-solid fa-check w-5 h-5"></i>
-                {{-- SVG Spin -> Font Awesome: fa-spinner --}}
                 <i wire:loading class="fa-solid fa-spinner w-5 h-5 animate-spin"></i>
                 <span wire:loading.remove>Perbarui Bundle</span>
                 <span wire:loading>Memperbarui...</span>
@@ -281,12 +275,13 @@
 </div>
 
 @push('scripts')
-
-<script src="https://cdn.tiny.cloud/1/rl06hgmjlmv97l1vwuecmxxbly87zhmoplvu9374mynvmab7/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
-
 <script>
-    // FUNGSI INIT TINYMCE (Diambil dari contoh Tryout)
     function initTinyMCE(selector, callback) {
+        if (typeof tinymce === 'undefined') {
+            console.error('TinyMCE belum dimuat dari layout utama.');
+            return;
+        }
+
         tinymce.init({
             selector: selector,
             plugins: 'link lists table code help wordcount',
@@ -303,9 +298,7 @@
         });
     }
 
-    // FUNGSI CALLBACK LIVEWIRE (Diambil dari contoh Tryout)
     const livewireTinyMCE = (editor, livewireProperty) => {
-        // Konten awal dimuat oleh Blade, jadi kita hanya perlu mendengarkan perubahan
         editor.on('change', function(e) {
             @this.set(livewireProperty, editor.getContent());
         });
@@ -314,17 +307,15 @@
         });
     };
 
-    // Panggil inisialisasi setelah Livewire memuat DOM
     document.addEventListener('livewire:load', function () {
-        // Panggil untuk textarea Deskripsi Bundle
         initTinyMCE('textarea#tinymce-description-edit', (editor) => livewireTinyMCE(editor, 'description'));
     });
 
-    // PENTING: Menangani Livewire v3 (livewire:navigated)
     document.addEventListener('livewire:navigated', function () {
-        // Hapus instance TinyMCE yang ada sebelum inisialisasi ulang
-        if (tinymce.get('tinymce-description-edit')) {
-            tinymce.get('tinymce-description-edit').destroy();
+        if (typeof tinymce !== 'undefined') {
+            if (tinymce.get('tinymce-description-edit')) {
+                tinymce.get('tinymce-description-edit').destroy();
+            }
         }
 
         setTimeout(() => {
@@ -332,9 +323,8 @@
         }, 100);
     });
 
-    // PENTING: Menangani Livewire v2 atau update komponen biasa
     document.addEventListener('livewire:update', function() {
-        if (!tinymce.get('tinymce-description-edit')) {
+        if (typeof tinymce !== 'undefined' && !tinymce.get('tinymce-description-edit')) {
             initTinyMCE('textarea#tinymce-description-edit', (editor) => livewireTinyMCE(editor, 'description'));
         }
     });

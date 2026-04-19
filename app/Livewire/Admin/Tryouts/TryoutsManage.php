@@ -48,6 +48,12 @@ class TryoutsManage extends Component
     public function updatedShowTrashed() { $this->resetPage(); }
     public function updatedPerPage() { $this->resetPage(); }
 
+    // ✨ FITUR BARU: Dynamic Route Prefix
+    public function getRolePrefixProperty()
+    {
+        return auth()->user()->role; // Output: 'admin' atau 'owner'
+    }
+
     public function updatedTitle($value)
     {
         if (!$this->isEdit) {
@@ -86,7 +92,7 @@ class TryoutsManage extends Component
         ])->layout('layouts.admin');
     }
 
-    // --- FUNGSI MODAL BAWAAN ---
+    // --- FUNGSI MODAL BAWAAN (TETAP DIPERTAHANKAN JIKA DIBUTUHKAN) ---
     public function openModal($edit = false, $id = null)
     {
         $this->resetForm();
@@ -175,60 +181,43 @@ class TryoutsManage extends Component
         session()->flash('success', 'Tryout berhasil diperbarui.');
     }
 
-    public function confirmDelete($id)
-    {
-        $this->confirmingDeletion = true;
-        $this->tryoutToDelete = $id;
-    }
-
-    public function cancelDelete()
-    {
-        $this->confirmingDeletion = false;
-        $this->tryoutToDelete = null;
-    }
-
-    // --- FUNGSI AKSI UTAMA (SUDAH DIUBAH MENJADI SOFT DELETE) ---
+    // --- FUNGSI AKSI UTAMA (SUDAH DIUBAH MENJADI RETURN ARRAY) ---
     
-    // 1. Soft Delete Eksekusi (Jika masih ada yang pakai modal confirmDelete bawaan)
-    public function softDelete()
-    {
-        try {
-            $tryout = Tryout::findOrFail($this->tryoutToDelete);
-            $tryout->delete(); // Ini otomatis Soft Delete di Laravel
-            
-            $this->confirmingDeletion = false;
-            $this->tryoutToDelete = null;
-            session()->flash('success', 'Tryout berhasil diarsipkan (soft delete).');
-        } catch (\Exception $e) {
-            session()->flash('error', 'Gagal menghapus tryout: ' . $e->getMessage());
-        }
-    }
-
-    // 1b. Fungsi Wrapper untuk dipanggil SweetAlert dari View
     public function softDeleteTryout($id)
     {
         try {
-            Tryout::findOrFail($id)->delete();
-            session()->flash('success', 'Tryout berhasil di Soft Delete.');
+            $tryout = Tryout::findOrFail($id);
+            $tryout->delete();
+            return ['status' => 'success', 'message' => 'Tryout "' . $tryout->title . '" berhasil di-soft delete.'];
         } catch (\Exception $e) { 
-            session()->flash('error', 'Gagal: ' . $e->getMessage()); 
+            return ['status' => 'error', 'message' => 'Gagal menghapus tryout: ' . $e->getMessage()];
         }
     }
 
-    // 2. Restore
-    public function restore($id)
+    public function restoreTryout($id) 
     {
         try {
-            Tryout::withTrashed()->findOrFail($id)->restore();
-            session()->flash('success', 'Tryout berhasil dipulihkan.');
+            $tryout = Tryout::withTrashed()->findOrFail($id);
+            $tryout->restore();
+            return ['status' => 'success', 'message' => 'Tryout "' . $tryout->title . '" berhasil direstore.'];
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal memulihkan tryout: ' . $e->getMessage());
+            return ['status' => 'error', 'message' => 'Gagal merestore tryout: ' . $e->getMessage()];
         }
     }
 
-    // 2b. Fungsi Wrapper Restore untuk SweetAlert
-    public function restoreTryout($id) {
-        $this->restore($id);
+    public function forceDeleteTryout($id) 
+    {
+        if (auth()->user()->role !== 'owner') {
+            return ['status' => 'error', 'message' => 'Akses ditolak. Hanya owner yang dapat menghapus permanen.'];
+        }
+
+        try {
+            $tryout = Tryout::withTrashed()->findOrFail($id);
+            $tryout->forceDelete();
+            return ['status' => 'success', 'message' => 'Tryout berhasil dihapus permanen.'];
+        } catch (\Exception $e) {
+            return ['status' => 'error', 'message' => 'Gagal menghapus permanen: ' . $e->getMessage()];
+        }
     }
 
     // --- FUNGSI TOGGLES ---
@@ -252,13 +241,5 @@ class TryoutsManage extends Component
         } catch (\Exception $e) {
             session()->flash('error', 'Gagal mengubah status HOTS: ' . $e->getMessage());
         }
-    }
-
-    public function getFinalPriceProperty()
-    {
-        if ($this->discount) {
-            return $this->price - $this->discount;
-        }
-        return $this->price;
     }
 }

@@ -47,9 +47,9 @@ class QuestionSubCategoriesManage extends Component
                     });
             })
             ->when($this->showTrashed, function ($query) {
-                $query->onlyTrashed(); // Hanya tampilkan yang terhapus
+                $query->onlyTrashed();
             }, function ($query) {
-                $query->whereNull('deleted_at'); // Hanya tampilkan yang aktif
+                $query->whereNull('deleted_at');
             })
             ->oldest()
             ->paginate($this->perPage);
@@ -99,7 +99,9 @@ class QuestionSubCategoriesManage extends Component
 
         $this->resetForm();
         $this->closeModal();
-        session()->flash('success', 'Sub kategori pertanyaan berhasil ditambahkan.');
+        
+        // Dispatch untuk Toast SweetAlert
+        $this->dispatch('swal-toast', icon: 'success', title: 'Berhasil!', text: 'Sub kategori berhasil ditambahkan.');
     }
 
     public function edit($id)
@@ -125,19 +127,21 @@ class QuestionSubCategoriesManage extends Component
 
         $this->resetForm();
         $this->closeModal();
-        session()->flash('success', 'Sub kategori pertanyaan berhasil diperbarui.');
+
+        // Dispatch untuk Toast SweetAlert
+        $this->dispatch('swal-toast', icon: 'success', title: 'Berhasil!', text: 'Sub kategori berhasil diperbarui.');
     }
 
-    // --- LOGIKA AKSI ADMIN (Soft Delete & Restore Only) ---
+    // --- LOGIKA AKSI ADMIN (RETURN ARRAY UNTUK SWEETALERT) ---
 
     public function softDeleteSubCategory($id)
     {
         try {
             $subCategory = QuestionSubCategory::findOrFail($id);
             $subCategory->delete();
-            session()->flash('success', 'Sub kategori pertanyaan berhasil di-Soft Delete.');
+            return ['status' => 'success', 'message' => 'Sub kategori berhasil di-soft delete.'];
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal melakukan soft delete: ' . $e->getMessage());
+            return ['status' => 'error', 'message' => 'Gagal menghapus: ' . $e->getMessage()];
         }
     }
 
@@ -145,9 +149,24 @@ class QuestionSubCategoriesManage extends Component
     {
         try {
             QuestionSubCategory::withTrashed()->findOrFail($id)->restore();
-            session()->flash('success', 'Sub kategori pertanyaan berhasil dipulihkan.');
+            return ['status' => 'success', 'message' => 'Sub kategori berhasil dipulihkan.'];
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal memulihkan sub kategori: ' . $e->getMessage());
+            return ['status' => 'error', 'message' => 'Gagal memulihkan: ' . $e->getMessage()];
+        }
+    }
+
+    public function forceDeleteSubCategory($id)
+    {
+        if (auth()->user()->role !== 'owner') {
+            return ['status' => 'error', 'message' => 'Akses ditolak! Hanya Owner yang dapat menghapus permanen.'];
+        }
+
+        try {
+            $subCategory = QuestionSubCategory::withTrashed()->findOrFail($id);
+            $subCategory->forceDelete();
+            return ['status' => 'success', 'message' => 'Sub kategori berhasil dihapus secara permanen.'];
+        } catch (\Exception $e) {
+            return ['status' => 'error', 'message' => 'Gagal menghapus permanen: ' . $e->getMessage()];
         }
     }
 }

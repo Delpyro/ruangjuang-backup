@@ -22,7 +22,13 @@ class BundlesManage extends Component
     public function updatedSearch(): void { $this->resetPage(); }
     public function updatedStatus(): void { $this->resetPage(); }
     public function updatedShowTrashed(): void { $this->resetPage(); }
-    public function updatedPerPage(): void { $this->resetPage(); } // ✨ BARU: Mencegah bug dropdown perPage
+    public function updatedPerPage(): void { $this->resetPage(); }
+
+    // ✨ FITUR BARU: Dynamic Route Prefix
+    public function getRolePrefixProperty()
+    {
+        return auth()->user()->role; // Output: 'admin' atau 'owner'
+    }
 
     public function render()
     {
@@ -53,19 +59,43 @@ class BundlesManage extends Component
         ])->layout('layouts.admin');
     }
 
-    // ✨ PERBAIKAN: Ubah nama jadi softDeleteBundle agar konsisten dengan Tryout
-    public function softDeleteBundle($id): void
+    // --- METHOD SOFT DELETE (Return Array) ---
+    public function softDeleteBundle($id)
     {
-        $bundle = Bundle::findOrFail($id);
-        $bundle->delete(); 
-        session()->flash('success', 'Bundle "' . $bundle->title . '" berhasil di-Soft Delete.');
+        try {
+            $bundle = Bundle::findOrFail($id);
+            $bundle->delete(); 
+            return ['status' => 'success', 'message' => 'Bundle "' . $bundle->title . '" berhasil di-soft delete.'];
+        } catch (\Exception $e) {
+            return ['status' => 'error', 'message' => 'Gagal menghapus bundle: ' . $e->getMessage()];
+        }
     }
 
-    // Fitur Restore (Admin diizinkan me-restore data)
-    public function restoreBundle($id): void
+    // --- METHOD RESTORE (Return Array) ---
+    public function restoreBundle($id)
     {
-        $bundle = Bundle::withTrashed()->findOrFail($id);
-        $bundle->restore();
-        session()->flash('success', 'Bundle "' . $bundle->title . '" berhasil dipulihkan.');
+        try {
+            $bundle = Bundle::withTrashed()->findOrFail($id);
+            $bundle->restore();
+            return ['status' => 'success', 'message' => 'Bundle "' . $bundle->title . '" berhasil direstore dan aktif kembali.'];
+        } catch (\Exception $e) {
+            return ['status' => 'error', 'message' => 'Gagal merestore bundle: ' . $e->getMessage()];
+        }
+    } 
+
+    // --- METHOD FORCE DELETE (Return Array & Proteksi Backend) ---
+    public function forceDeleteBundle($id)
+    {
+        if (auth()->user()->role !== 'owner') {
+            return ['status' => 'error', 'message' => 'Akses ditolak. Hanya owner yang dapat menghapus permanen.'];
+        }
+
+        try {
+            $bundle = Bundle::withTrashed()->findOrFail($id);
+            $bundle->forceDelete();
+            return ['status' => 'success', 'message' => 'Bundle "' . $bundle->title . '" berhasil dihapus permanen.'];
+        } catch (\Exception $e) {
+            return ['status' => 'error', 'message' => 'Gagal menghapus permanen: ' . $e->getMessage()];
+        }
     }
 }

@@ -5,35 +5,12 @@
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-2xl font-bold text-gray-800">Manajemen Kategori Pertanyaan</h2>
 
-            <button wire:click="openModal(false)" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center">
+            <button wire:click="openModal(false)" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center shadow-sm">
                 <i class="fa-solid fa-plus w-4 h-4 mr-1"></i> Tambah Kategori
             </button>
         </div>
 
-        {{-- FLASH MESSAGE DENGAN ANIMASI ALPINE.JS --}}
-        @if (session()->has('success'))
-            <div x-data="{ show: true }" x-show="show" x-transition.duration.500ms x-init="setTimeout(() => show = false, 3000)" class="mb-6 p-4 bg-green-50 text-green-800 rounded-lg border border-green-200 flex items-center justify-between shadow-sm">
-                <div class="flex items-center">
-                    <i class="fa-solid fa-circle-check w-5 h-5 mr-3 text-green-600"></i>
-                    <span class="font-medium">{{ session('success') }}</span>
-                </div>
-                <button type="button" @click="show = false" class="text-green-600 hover:text-green-800 transition-colors duration-200">
-                    <i class="fa-solid fa-xmark w-5 h-5"></i>
-                </button>
-            </div>
-        @endif
-
-        @if (session()->has('error'))
-            <div x-data="{ show: true }" x-show="show" x-transition.duration.500ms x-init="setTimeout(() => show = false, 4000)" class="mb-6 p-4 bg-red-50 text-red-800 rounded-lg border border-red-200 flex items-center justify-between shadow-sm">
-                <div class="flex items-center">
-                    <i class="fa-solid fa-circle-exclamation w-5 h-5 mr-3 text-red-600"></i>
-                    <span class="font-medium">{{ session('error') }}</span>
-                </div>
-                <button type="button" @click="show = false" class="text-red-600 hover:text-red-800 transition-colors duration-200">
-                    <i class="fa-solid fa-xmark w-5 h-5"></i>
-                </button>
-            </div>
-        @endif
+        {{-- FLASH MESSAGE HTML LAMA SUDAH DIHAPUS DIGANTI SWEETALERT JS --}}
 
         {{-- Tabs untuk filter status --}}
         <div class="mb-4 flex border-b border-gray-200">
@@ -126,16 +103,24 @@
                                                     showCancelButton: true,
                                                     confirmButtonColor: '#f59e0b',
                                                     cancelButtonColor: '#6b7280',
-                                                    confirmButtonText: 'Ya, Soft Delete!'
-                                                }).then((result) => {
-                                                    if (result.isConfirmed) { $wire.softDeleteCategory({{ $category->id }}) }
+                                                    confirmButtonText: 'Ya, Soft Delete!',
+                                                    cancelButtonText: 'Batal'
+                                                }).then(async (result) => {
+                                                    if (result.isConfirmed) {
+                                                        const res = await $wire.softDeleteCategory({{ $category->id }});
+                                                        if (res && res.status === 'success') {
+                                                            Swal.fire({ icon: 'success', title: 'Berhasil!', text: res.message, showConfirmButton: false, timer: 2000, toast: true, position: 'top-end' });
+                                                        } else if (res) {
+                                                            Swal.fire('Oops...', res.message, 'error');
+                                                        }
+                                                    }
                                                 })
                                             " class="text-amber-600 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm">
                                                 <i class="fa-solid fa-box-archive w-4 h-4 mr-1"></i> Soft Delete
                                             </button>
                                         @endif
                                     @else
-                                        {{-- JIKA TERHAPUS: HANYA Tampilkan Restore (Tanpa Force Delete untuk Admin) --}}
+                                        {{-- JIKA TERHAPUS: HANYA Tampilkan Restore --}}
                                         <button type="button" x-data x-on:click="
                                             Swal.fire({
                                                 title: 'Pulihkan Kategori?',
@@ -144,13 +129,53 @@
                                                 showCancelButton: true,
                                                 confirmButtonColor: '#10b981',
                                                 cancelButtonColor: '#6b7280',
-                                                confirmButtonText: 'Ya, Pulihkan!'
-                                            }).then((result) => {
-                                                if (result.isConfirmed) { $wire.restoreCategory({{ $category->id }}) }
+                                                confirmButtonText: 'Ya, Pulihkan!',
+                                                cancelButtonText: 'Batal'
+                                            }).then(async (result) => {
+                                                if (result.isConfirmed) {
+                                                    const res = await $wire.restoreCategory({{ $category->id }});
+                                                    if (res && res.status === 'success') {
+                                                        Swal.fire({ icon: 'success', title: 'Berhasil!', text: res.message, showConfirmButton: false, timer: 2000, toast: true, position: 'top-end' });
+                                                    } else if (res) {
+                                                        Swal.fire('Oops...', res.message, 'error');
+                                                    }
+                                                }
                                             })
-                                        " class="text-green-600 hover:text-green-900 bg-green-50 hover:bg-green-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm">
+                                        " class="text-emerald-600 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm">
                                             <i class="fa-solid fa-rotate-left w-4 h-4 mr-1"></i> Restore
                                         </button>
+
+                                        @if(auth()->check() && auth()->user()->role === 'owner')
+                                            @if($category->subCategories->count() > 0)
+                                                <button disabled class="text-gray-400 bg-gray-100 px-3 py-2 rounded-md flex items-center shadow-sm cursor-not-allowed" title="Tidak dapat dihapus permanen karena memiliki subkategori">
+                                                    <i class="fa-solid fa-trash-can w-4 h-4 mr-1"></i> Hapus Permanen
+                                                </button>
+                                            @else
+                                                <button type="button" x-data x-on:click="
+                                                    Swal.fire({
+                                                        title: 'HAPUS PERMANEN?',
+                                                        text: 'Tindakan ini tidak bisa dibatalkan!',
+                                                        icon: 'error',
+                                                        showCancelButton: true,
+                                                        confirmButtonColor: '#ef4444',
+                                                        cancelButtonColor: '#6b7280',
+                                                        confirmButtonText: 'Ya, Hapus Permanen!',
+                                                        cancelButtonText: 'Batal'
+                                                    }).then(async (result) => {
+                                                        if (result.isConfirmed) {
+                                                            const res = await $wire.forceDeleteCategory({{ $category->id }});
+                                                            if (res && res.status === 'success') {
+                                                                Swal.fire({ icon: 'success', title: 'Dihapus!', text: res.message, showConfirmButton: false, timer: 2000, toast: true, position: 'top-end' });
+                                                            } else if (res) {
+                                                                Swal.fire('Oops...', res.message, 'error');
+                                                            }
+                                                        }
+                                                    })
+                                                " class="text-red-700 hover:text-red-900 font-bold bg-red-100 hover:bg-red-200 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm">
+                                                    <i class="fa-solid fa-trash-can w-4 h-4 mr-1"></i> Hapus Permanen
+                                                </button>
+                                            @endif
+                                        @endif
                                     @endif
                                 </div>
                             </td>
@@ -169,9 +194,16 @@
             </table>
         </div>
 
-        <div class="mt-4">
-            {{ $categories->links() }}
-        </div>
+        {{-- PAGINATION STYLING --}}
+        @if ($categories->hasPages())
+            <div class="mt-6">
+                <div class="flex flex-col md:flex-row items-center justify-between gap-4 p-4 bg-gray-50 border border-gray-200 rounded-xl shadow-sm">
+                    <div class="flex-1 flex justify-end">
+                        {{ $categories->links() }}
+                    </div>
+                </div>
+            </div>
+        @endif
     </div>
 
     {{-- MODAL BAWAAN (CREATE/EDIT) --}}
@@ -197,20 +229,19 @@
                             <div class="space-y-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Nama Kategori</label>
-                                    <input type="text" wire:model="name" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                    <input type="text" wire:model="name" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-colors">
                                     @error('name') <span class="text-red-600 text-sm mt-1">{{ $message }}</span> @enderror
                                 </div>
 
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Passing Grade</label>
-                                    <input type="number" step="0.01" min="0" max="200" wire:model="passing_grade" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                                    @error('passing_grade') <span class="text-red-600 text-sm mt-1">{{ $message }}</span> @enderror
+                                    <input type="number" step="1" min="0" max="200" wire:model="passing_grade" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-colors">                                    @error('passing_grade') <span class="text-red-600 text-sm mt-1">{{ $message }}</span> @enderror
                                 </div>
 
                                 <div>
                                     <div class="flex items-center">
                                         <input wire:model="is_active" id="is_active" type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                        <label for="is_active" class="ml-2 block text-sm text-gray-900">Aktif</label>
+                                        <label for="is_active" class="ml-2 block text-sm text-gray-900 font-medium">Aktif</label>
                                     </div>
                                     @error('is_active') <span class="text-red-600 text-sm mt-1">{{ $message }}</span> @enderror
                                 </div>
@@ -220,7 +251,7 @@
                                 <button type="button" wire:click="closeModal" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200 flex items-center">
                                     <i class="fa-solid fa-xmark w-4 h-4 mr-1"></i> Batal
                                 </button>
-                                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors duration-200 flex items-center">
+                                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors duration-200 flex items-center shadow-sm">
                                     <i class="fa-solid {{ $isEdit ? 'fa-check' : 'fa-floppy-disk' }} w-4 h-4 mr-1"></i> {{ $isEdit ? 'Update' : 'Simpan' }}
                                 </button>
                             </div>
@@ -231,3 +262,21 @@
         </div>
     @endif
 </div>
+
+{{-- SCRIPT LISTENER UNTUK TOAST SWEETALERT --}}
+@push('scripts')
+<script>
+    window.addEventListener('swal-toast', event => {
+        const data = event.detail[0] || event.detail; // Handle kompatibilitas argumen Livewire v3
+        Swal.fire({
+            icon: data.icon || 'success',
+            title: data.title || 'Berhasil!',
+            text: data.text,
+            showConfirmButton: false,
+            timer: 2000,
+            toast: true,
+            position: 'top-end'
+        });
+    });
+</script>
+@endpush

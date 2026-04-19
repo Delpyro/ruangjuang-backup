@@ -25,6 +25,12 @@ class BundlesEdit extends Component
     public $search = '';
     public $selectAll = false;
 
+    // ✨ FITUR BARU: Dynamic Route Prefix
+    public function getRolePrefixProperty()
+    {
+        return auth()->user()->role; // Output: 'admin' atau 'owner'
+    }
+
     protected function rules()
     {
         return [
@@ -100,7 +106,9 @@ class BundlesEdit extends Component
             $this->bundle->tryouts()->sync($this->selected_tryout_ids);
 
             session()->flash('success', 'Bundle **' . $this->title . '** berhasil diperbarui!');
-            return redirect()->route('admin.bundles.index'); // Redirect Admin
+            
+            // ✨ DYNAMIC REDIRECT ✨
+            return redirect()->route($this->rolePrefix . '.bundles.index');
 
         } catch (\Exception $e) {
             session()->flash('error', 'Terjadi kesalahan saat memperbarui bundle: ' . $e->getMessage());

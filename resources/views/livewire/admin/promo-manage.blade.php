@@ -2,7 +2,7 @@
     <div class="bg-white rounded-xl shadow-md overflow-hidden p-6 mb-8 border border-gray-100">
         <div class="mb-6 flex justify-between items-start">
             <div>
-                <h2 class="text-2xl font-bold text-gray-800">Manajemen Promo Terlaris (Admin)</h2>
+                <h2 class="text-2xl font-bold text-gray-800">Manajemen Promo Terlaris</h2>
                 <p class="text-sm text-gray-500 mt-1">Pilih Try Out atau Bundle untuk ditampilkan di halaman depan section Promo.</p>
             </div>
             <div class="bg-gray-100 px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium">
