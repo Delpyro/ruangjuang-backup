@@ -41,6 +41,12 @@ class TransactionsDetail extends Component
         'filterMonth' => ['except' => 'all', 'as' => 'month'],
     ];
 
+    // ✨ FITUR BARU: Dynamic Route Prefix
+    public function getRolePrefixProperty()
+    {
+        return auth()->user()->role; // Output: 'admin' atau 'owner'
+    }
+
     public function mount($id, $type)
     {
         $this->itemId = $id;
@@ -196,7 +202,7 @@ class TransactionsDetail extends Component
     public function syncStatus($orderId, MidtransService $midtransService)
     {
         if (!$orderId) {
-            session()->flash('error', 'Order ID tidak ditemukan.');
+            $this->dispatch('swal-toast', icon: 'error', title: 'Gagal!', text: 'Order ID tidak ditemukan.');
             return;
         }
 
@@ -205,18 +211,18 @@ class TransactionsDetail extends Component
 
             if ($statusResult['success']) {
                 $midtransService->handleNotification((array)$statusResult['response']);
-                session()->flash('success', 'Status transaksi ' . $orderId . ' berhasil disinkronkan.');
+                $this->dispatch('swal-toast', icon: 'success', title: 'Berhasil!', text: 'Status transaksi ' . $orderId . ' berhasil disinkronkan.');
             } else {
                 $transaction = Transaction::where('order_id', $orderId)->first();
                 if ($transaction && $transaction->isPending()) {
                     $transaction->update(['status' => 'expire']);
-                    session()->flash('success', 'Transaksi ' . $orderId . ' ditandai sebagai expired (404).');
+                    $this->dispatch('swal-toast', icon: 'success', title: 'Berhasil!', text: 'Transaksi ' . $orderId . ' ditandai sebagai expired (404).');
                 } else {
-                    session()->flash('error', 'Gagal sinkronisasi: ' . $statusResult['error']);
+                    $this->dispatch('swal-toast', icon: 'error', title: 'Gagal!', text: 'Gagal sinkronisasi: ' . $statusResult['error']);
                 }
             }
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal sinkronisasi: ' . $e->getMessage());
+            $this->dispatch('swal-toast', icon: 'error', title: 'Gagal!', text: 'Gagal sinkronisasi: ' . $e->getMessage());
         }
     }
 }

@@ -31,6 +31,12 @@ class TransactionsIndex extends Component
         'search' => ['except' => ''],
     ];
 
+    // ✨ FITUR BARU: Dynamic Route Prefix
+    public function getRolePrefixProperty()
+    {
+        return auth()->user()->role; // Output: 'admin' atau 'owner'
+    }
+
     public function mount()
     {
         $this->loadSummaries();
@@ -142,7 +148,8 @@ class TransactionsIndex extends Component
     
     public function goToDetail($itemType, $itemId)
     {
-        return $this->redirect(route('admin.transactions.detail', [
+        // ✨ DYNAMIC REDIRECT ✨
+        return $this->redirect(route($this->rolePrefix . '.transactions.detail', [
             'type' => $itemType, 
             'id' => $itemId
         ]), navigate: true); 

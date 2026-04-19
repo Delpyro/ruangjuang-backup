@@ -14,6 +14,23 @@
             </div>
         </div>
 
+        {{-- Error Message dari Livewire (Optional) --}}
+        @if($errorMessage)
+            <div x-data="{ show: true }" 
+                 x-show="show" 
+                 x-init="setTimeout(() => show = false, 5000)" 
+                 x-transition.duration.500ms
+                 class="mb-4 p-4 bg-yellow-50 text-yellow-800 rounded-lg border border-yellow-200 flex items-center justify-between shadow-sm">
+                <div class="flex items-center">
+                    <i class="fa-solid fa-triangle-exclamation w-5 h-5 mr-3 text-yellow-600"></i>
+                    <span>{{ $errorMessage }}</span>
+                </div>
+                <button type="button" @click="show = false; $wire.set('errorMessage', '')" class="text-yellow-600 hover:text-yellow-800 transition-colors duration-200">
+                    <i class="fa-solid fa-xmark w-4 h-4"></i>
+                </button>
+            </div>
+        @endif
+
         {{-- Tabs untuk filter status --}}
         <div class="mb-4 flex border-b border-gray-200">
             <button
@@ -37,48 +54,6 @@
                 class="w-full md:w-1/3 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
             />
         </div>
-
-        {{-- Flash message --}}
-        @if (session()->has('success'))
-            <div x-data="{ show: true }" 
-                 x-show="show" 
-                 x-init="setTimeout(() => show = false, 5000)" 
-                 x-transition.duration.500ms
-                 class="mb-4 p-4 bg-green-50 text-green-800 rounded-lg border border-green-200 flex items-center justify-between shadow-sm">
-                <div class="flex items-center">
-                    <i class="fa-solid fa-circle-check w-5 h-5 mr-3 text-green-600"></i>
-                    <span>{{ session('success') }}</span>
-                </div>
-                <button type="button" @click="show = false" class="text-green-600 hover:text-green-800 transition-colors duration-200">
-                    <i class="fa-solid fa-xmark w-4 h-4"></i>
-                </button>
-            </div>
-        @endif
-
-        @if (session()->has('error'))
-            <div class="mb-4 p-4 bg-red-50 text-red-800 rounded-lg border border-red-200 flex items-center justify-between shadow-sm">
-                <div class="flex items-center">
-                    <i class="fa-solid fa-circle-exclamation w-5 h-5 mr-3 text-red-600"></i>
-                    <span>{{ session('error') }}</span>
-                </div>
-                <button type="button" onclick="this.parentElement.style.display='none'" class="text-red-600 hover:text-red-800 transition-colors duration-200">
-                    <i class="fa-solid fa-xmark w-4 h-4"></i>
-                </button>
-            </div>
-        @endif
-
-        {{-- Error Message dari Livewire (Optional) --}}
-        @if($errorMessage)
-            <div class="mb-4 p-4 bg-yellow-50 text-yellow-800 rounded-lg border border-yellow-200 flex items-center justify-between shadow-sm">
-                <div class="flex items-center">
-                    <i class="fa-solid fa-triangle-exclamation w-5 h-5 mr-3 text-yellow-600"></i>
-                    <span>{{ $errorMessage }}</span>
-                </div>
-                <button type="button" wire:click="$set('errorMessage', '')" class="text-yellow-600 hover:text-yellow-800 transition-colors duration-200">
-                    <i class="fa-solid fa-xmark w-4 h-4"></i>
-                </button>
-            </div>
-        @endif
 
         {{-- Table Users --}}
         <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
@@ -137,13 +112,13 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div class="flex space-x-2">
                                     @if(!$user->trashed())
-                                        {{-- ✨ TOMBOL AKSES DIKEMBALIKAN ✨ --}}
-                                        <a href="{{ url('/admin/user/akses/' . $user->id) }}"
+                                        {{-- ✨ DYNAMIC ROUTE UNTUK AKSES ✨ --}}
+                                        <a href="{{ url('/' . $this->rolePrefix . '/user/akses/' . $user->id) }}"
                                             class="text-cyan-600 hover:text-cyan-900 bg-cyan-50 hover:bg-cyan-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm" title="Atur Akses User">
                                             <i class="fa-solid fa-lock w-4 h-4 mr-1"></i> Akses
                                         </a>
 
-                                        {{-- ✨ TOMBOL DETAIL HANYA UNTUK OWNER ✨ --}}
+                                        {{-- TOMBOL DETAIL HANYA UNTUK OWNER --}}
                                         @if(auth()->check() && auth()->user()->role === 'owner')
                                         <a href="{{ url('/owner/user/detail/' . $user->id) }}"
                                             class="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm" title="Detail User">
@@ -158,7 +133,7 @@
                                             <i class="fa-solid fa-pen-to-square w-4 h-4 mr-1"></i> Edit
                                         </button>
 
-                                        {{-- Tombol Soft Delete dengan SweetAlert --}}
+                                        {{-- Tombol Soft Delete --}}
                                         <button type="button" x-data x-on:click="
                                             Swal.fire({
                                                 title: 'Soft Delete User?',
@@ -172,9 +147,9 @@
                                             }).then(async (result) => {
                                                 if (result.isConfirmed) { 
                                                     const res = await $wire.softDelete({{ $user->id }});
-                                                    if (res.status === 'success') {
+                                                    if (res && res.status === 'success') {
                                                         Swal.fire({ icon: 'success', title: 'Berhasil!', text: res.message, showConfirmButton: false, timer: 2000, toast: true, position: 'top-end' });
-                                                    } else {
+                                                    } else if (res) {
                                                         Swal.fire('Oops...', res.message, 'error');
                                                     }
                                                 }
@@ -183,7 +158,7 @@
                                             <i class="fa-solid fa-box-archive w-4 h-4 mr-1"></i> Soft Delete
                                         </button>
                                     @else
-                                        {{-- Tombol Restore dengan SweetAlert --}}
+                                        {{-- Tombol Restore --}}
                                         <button type="button" x-data x-on:click="
                                             Swal.fire({
                                                 title: 'Restore User?',
@@ -197,9 +172,9 @@
                                             }).then(async (result) => {
                                                 if (result.isConfirmed) { 
                                                     const res = await $wire.restore({{ $user->id }});
-                                                    if (res.status === 'success') {
+                                                    if (res && res.status === 'success') {
                                                         Swal.fire({ icon: 'success', title: 'Berhasil!', text: res.message, showConfirmButton: false, timer: 2000, toast: true, position: 'top-end' });
-                                                    } else {
+                                                    } else if (res) {
                                                         Swal.fire('Oops...', res.message, 'error');
                                                     }
                                                 }
@@ -223,9 +198,9 @@
                                                 }).then(async (result) => {
                                                     if (result.isConfirmed) { 
                                                         const res = await $wire.forceDelete({{ $user->id }});
-                                                        if (res.status === 'success') {
+                                                        if (res && res.status === 'success') {
                                                             Swal.fire({ icon: 'success', title: 'Dihapus!', text: res.message, showConfirmButton: false, timer: 2000, toast: true, position: 'top-end' });
-                                                        } else {
+                                                        } else if (res) {
                                                             Swal.fire('Oops...', res.message, 'error');
                                                         }
                                                     }
@@ -364,3 +339,21 @@
         </div>
     @endif
 </div>
+
+{{-- SCRIPT LISTENER UNTUK TOAST SWEETALERT --}}
+@push('scripts')
+<script>
+    window.addEventListener('swal-toast', event => {
+        const data = event.detail[0] || event.detail; // Handle kompatibilitas argumen Livewire v3
+        Swal.fire({
+            icon: data.icon || 'success',
+            title: data.title || 'Berhasil!',
+            text: data.text,
+            showConfirmButton: false,
+            timer: 2000,
+            toast: true,
+            position: 'top-end'
+        });
+    });
+</script>
+@endpush

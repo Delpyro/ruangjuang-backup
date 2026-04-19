@@ -4,7 +4,8 @@
         {{-- Header Baru --}}
         <div class="flex justify-between items-center mb-6">
             <div>
-                <a href="{{ route('admin.transactions.index') }}" class="text-blue-600 hover:text-blue-800 text-sm flex items-center mb-2">
+                {{-- ✨ DYNAMIC ROUTE UNTUK TOMBOL KEMBALI ✨ --}}
+                <a href="{{ route($this->rolePrefix . '.transactions.index') }}" class="text-blue-600 hover:text-blue-800 text-sm flex items-center mb-2">
                     <i class="fa-solid fa-arrow-left w-3 h-3 mr-1"></i> Kembali ke Ringkasan
                 </a>
                 <h2 class="text-2xl font-bold text-gray-800">
@@ -86,27 +87,6 @@
                 </select>
             </div>
         </div>
-        {{-- Akhir Search & Filter Bulan --}}
-
-        {{-- Flash messages --}}
-        @if (session()->has('success'))
-            <div class="mb-4 p-4 bg-green-50 text-green-800 rounded-lg border border-green-200 flex items-center justify-between shadow-sm"
-                x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 3000)" x-transition>
-                <div class="flex items-center">
-                    <i class="fa-solid fa-circle-check w-5 h-5 mr-3 text-green-600"></i>
-                    <span>{{ session('success') }}</span>
-                </div>
-            </div>
-        @endif
-        @if (session()->has('error'))
-            <div class="mb-4 p-4 bg-red-50 text-red-800 rounded-lg border border-red-200 flex items-center justify-between shadow-sm"
-                x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 3000)" x-transition>
-                <div class="flex items-center">
-                    <i class="fa-solid fa-circle-exclamation w-5 h-5 mr-3 text-red-600"></i>
-                    <span>{{ session('error') }}</span>
-                </div>
-            </div>
-        @endif
         
         {{-- Table Transaksi --}}
         <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
@@ -209,7 +189,7 @@
              <div class="flex items-center justify-center min-h-screen p-4 w-xl m-auto">
                  <div class="relative bg-white rounded-lg shadow-xl max-w-lg w-full mx-auto
                               max-h-[90vh] transform transition-all"
-                              @click.away="closeModal">
+                      @click.away="closeModal">
 
                      {{-- Tombol close --}}
                      <button wire:click="closeModal"
@@ -312,3 +292,21 @@
         </div>
     @endif
 </div>
+
+{{-- SCRIPT LISTENER UNTUK TOAST SWEETALERT --}}
+@push('scripts')
+<script>
+    window.addEventListener('swal-toast', event => {
+        const data = event.detail[0] || event.detail; // Handle kompatibilitas argumen Livewire v3
+        Swal.fire({
+            icon: data.icon || 'success',
+            title: data.title || 'Berhasil!',
+            text: data.text,
+            showConfirmButton: false,
+            timer: 2000,
+            toast: true,
+            position: 'top-end'
+        });
+    });
+</script>
+@endpush

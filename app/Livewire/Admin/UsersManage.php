@@ -32,6 +32,12 @@ class UsersManage extends Component
 
     protected $queryString = ['search'];
 
+    // ✨ FITUR BARU: Dynamic Route Prefix
+    public function getRolePrefixProperty()
+    {
+        return auth()->user()->role; // Output: 'admin' atau 'owner'
+    }
+
     protected function rules()
     {
         $rules = [
@@ -119,7 +125,7 @@ class UsersManage extends Component
             'slug' => $slug,
             'email' => $this->email,
             'phone_number' => $this->phone_number,
-            'role' => 'user', // Memastikan bahwa role hanya bisa 'user'
+            'role' => 'user', 
             'status' => $this->status,
             'is_active' => $this->is_active,
             'password' => Hash::make($this->password),
@@ -128,8 +134,9 @@ class UsersManage extends Component
 
         $this->resetForm();
         $this->closeModal();
-        session()->flash('success', 'User berhasil ditambahkan.');
-        return $this->redirect(request()->header('Referer')); // Reload agar SweetAlert Layout muncul
+        
+        // ✨ Dispatch Toast SweetAlert ✨
+        $this->dispatch('swal-toast', icon: 'success', title: 'Berhasil!', text: 'User berhasil ditambahkan.');
     }
 
     public function edit($id)
@@ -178,8 +185,9 @@ class UsersManage extends Component
 
         $this->resetForm();
         $this->closeModal();
-        session()->flash('success', 'User berhasil diperbarui.');
-        return $this->redirect(request()->header('Referer')); // Reload agar SweetAlert Layout muncul
+        
+        // ✨ Dispatch Toast SweetAlert ✨
+        $this->dispatch('swal-toast', icon: 'success', title: 'Berhasil!', text: 'User berhasil diperbarui.');
     }
 
     // --- METHOD SOFT DELETE (Return Array untuk SweetAlert) ---

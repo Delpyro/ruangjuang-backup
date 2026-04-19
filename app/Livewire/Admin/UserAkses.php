@@ -19,6 +19,12 @@ class UserAkses extends Component
     public $confirmingReset = false;
     public $tryoutToReset = null;
 
+    // ✨ FITUR BARU: Dynamic Route Prefix
+    public function getRolePrefixProperty()
+    {
+        return auth()->user()->role; // Output: 'admin' atau 'owner'
+    }
+
     public function mount($id)
     {
         $this->userId = $id;
@@ -51,7 +57,7 @@ class UserAkses extends Component
             // 2. Hapus skor per kategori pada attempt ini
             DB::table('tryout_category_scores')->where('user_tryout_id', $userTryout->id)->delete();
 
-            // 3. Hapus ranking user untuk tryout ini (opsional, agar bersih sampai dia selesai lagi)
+            // 3. Hapus ranking user untuk tryout ini
             DB::table('rankings')
                 ->where('id_user', $userTryout->id_user)
                 ->where('tryout_id', $userTryout->tryout_id)
@@ -79,8 +85,6 @@ class UserAkses extends Component
 
     public function render()
     {
-        // Mengambil data akses tryout user beserta detail tryout-nya
-        // Pastikan model UserTryout memiliki relasi belongsTo ke Tryout dengan nama function 'tryout'
         $aksesTryouts = UserTryout::with('tryout')
             ->where('id_user', $this->userId)
             ->orderBy('tryout_id')
