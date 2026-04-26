@@ -18,7 +18,7 @@ class UsersManage extends Component
 
     public $name, $slug, $email, $phone_number, $status = 'active', $is_active = true, $image, $password;
     
-    // Role di-hardcode ke 'user' karena Admin tidak boleh membuat/mengubah role jadi Admin
+    // Default diset ke 'user'
     public $role = 'user'; 
 
     public $userId;
@@ -32,7 +32,7 @@ class UsersManage extends Component
 
     protected $queryString = ['search'];
 
-    // ✨ FITUR BARU: Dynamic Route Prefix
+    // Dynamic Route Prefix
     public function getRolePrefixProperty()
     {
         return auth()->user()->role; // Output: 'admin' atau 'owner'
@@ -46,6 +46,7 @@ class UsersManage extends Component
             'status' => 'required|string',
             'is_active' => 'boolean',
             'image' => 'nullable|image|max:1024',
+            'role' => 'required|in:user,admin', // Tambahkan validasi role
         ];
 
         if ($this->isEdit) {
@@ -109,7 +110,7 @@ class UsersManage extends Component
     public function resetForm()
     {
         $this->reset(['name', 'slug', 'email', 'phone_number', 'status', 'is_active', 'password', 'image', 'userId', 'isEdit', 'currentImage', 'errorMessage']);
-        $this->role = 'user'; // Paksa role default
+        $this->role = 'user'; // Paksa role default setiap reset
         $this->status = 'active';
         $this->is_active = true;
     }
@@ -120,12 +121,15 @@ class UsersManage extends Component
 
         $slug = Str::slug($this->name);
 
+        // Jika yang membuat adalah owner, simpan rolenya. Jika bukan, paksa jadi 'user'.
+        $roleToSave = (auth()->check() && auth()->user()->role === 'owner') ? $this->role : 'user';
+
         User::create([
             'name' => $this->name,
             'slug' => $slug,
             'email' => $this->email,
             'phone_number' => $this->phone_number,
-            'role' => 'user', 
+            'role' => $roleToSave, // Gunakan hasil seleksi di atas
             'status' => $this->status,
             'is_active' => $this->is_active,
             'password' => Hash::make($this->password),
@@ -135,7 +139,6 @@ class UsersManage extends Component
         $this->resetForm();
         $this->closeModal();
         
-        // ✨ Dispatch Toast SweetAlert ✨
         $this->dispatch('swal-toast', icon: 'success', title: 'Berhasil!', text: 'User berhasil ditambahkan.');
     }
 
@@ -147,7 +150,7 @@ class UsersManage extends Component
         $this->slug = $user->slug;
         $this->email = $user->email;
         $this->phone_number = $user->phone_number;
-        // Role TIDAK di-load karena admin tidak boleh edit role
+        $this->role = $user->role; // Load role agar owner bisa melihatnya saat edit
         $this->status = $user->status;
         $this->is_active = $user->is_active;
         $this->currentImage = $user->image;
@@ -165,10 +168,14 @@ class UsersManage extends Component
             'slug' => $slug,
             'email' => $this->email,
             'phone_number' => $this->phone_number,
-            // Role dihilangkan dari updateData agar tidak terganti
             'status' => $this->status,
             'is_active' => $this->is_active,
         ];
+
+        // Proteksi: Hanya Owner yang bisa mengubah Role
+        if (auth()->check() && auth()->user()->role === 'owner') {
+            $updateData['role'] = $this->role;
+        }
 
         if ($this->password) {
             $updateData['password'] = Hash::make($this->password);
@@ -186,11 +193,9 @@ class UsersManage extends Component
         $this->resetForm();
         $this->closeModal();
         
-        // ✨ Dispatch Toast SweetAlert ✨
         $this->dispatch('swal-toast', icon: 'success', title: 'Berhasil!', text: 'User berhasil diperbarui.');
     }
 
-    // --- METHOD SOFT DELETE (Return Array untuk SweetAlert) ---
     public function softDelete($id)
     {
         try {
@@ -202,7 +207,6 @@ class UsersManage extends Component
         }
     }
 
-    // --- METHOD RESTORE (Return Array untuk SweetAlert) ---
     public function restore($id)
     {
         try {
@@ -218,7 +222,6 @@ class UsersManage extends Component
         try {
             $user = User::withTrashed()->findOrFail($id);
             
-            // Hapus gambar fisik dari storage jika ada
             if ($user->image) {
                 Storage::disk('public')->delete($user->image);
             }

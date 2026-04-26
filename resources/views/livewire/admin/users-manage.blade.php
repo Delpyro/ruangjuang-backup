@@ -94,7 +94,7 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ $user->phone_number ?? '-' }}</td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full
-                                    {{ $user->role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800' }}">
+                                    {{ $user->role === 'admin' ? 'bg-purple-100 text-purple-800' : ($user->role === 'owner' ? 'bg-indigo-100 text-indigo-800' : 'bg-blue-100 text-blue-800') }}">
                                     {{ ucfirst($user->role) }}
                                 </span>
                             </td>
@@ -112,7 +112,7 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div class="flex space-x-2">
                                     @if(!$user->trashed())
-                                        {{-- ✨ DYNAMIC ROUTE UNTUK AKSES ✨ --}}
+                                        {{-- DYNAMIC ROUTE UNTUK AKSES --}}
                                         <a href="{{ url('/' . $this->rolePrefix . '/user/akses/' . $user->id) }}"
                                             class="text-cyan-600 hover:text-cyan-900 bg-cyan-50 hover:bg-cyan-100 px-3 py-2 rounded-md transition-colors duration-200 flex items-center shadow-sm" title="Atur Akses User">
                                             <i class="fa-solid fa-lock w-4 h-4 mr-1"></i> Akses
@@ -286,6 +286,18 @@
                                     @endif
                                     @error('password') <span class="text-red-600 text-sm mt-1">{{ $message }}</span> @enderror
                                 </div>
+
+                                {{-- ✨ Hanya tampilkan pilihan Role jika user yang login adalah Owner ✨ --}}
+                                @if(auth()->check() && auth()->user()->role === 'owner')
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                                    <select wire:model="role" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="user">User</option>
+                                        <option value="admin">Admin</option>
+                                    </select>
+                                    @error('role') <span class="text-red-600 text-sm mt-1">{{ $message }}</span> @enderror
+                                </div>
+                                @endif
 
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>

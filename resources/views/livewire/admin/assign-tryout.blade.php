@@ -2,7 +2,7 @@
     <div class="bg-white rounded-xl shadow-md overflow-hidden p-6 mb-6 flex justify-between items-center">
         <div>
             <h2 class="text-2xl font-bold text-gray-800">Assign Tryout ke User</h2>
-            <p class="text-gray-500">Pilih satu pengguna dan berikan banyak akses tryout sekaligus.</p>
+            <p class="text-gray-500">Pilih hingga 10 pengguna dan berikan banyak akses tryout sekaligus.</p>
         </div>
         <a href="{{ route('admin.users') }}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors flex items-center shadow-sm">
             <i class="fa-solid fa-arrow-left mr-2"></i> Kembali
@@ -32,23 +32,27 @@
                 
                 <form wire:submit.prevent="assign">
                     
-                    {{-- Pilih User (Searchable Custom Select) --}}
+                    {{-- Multi Select Users --}}
                     <div class="mb-5 relative">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Cari & Pilih Pengguna <span class="text-red-500">*</span></label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Cari & Pilih Pengguna (Maks: 10) <span class="text-red-500">*</span></label>
                         
-                        @if($selectedUser)
-                            <div class="flex justify-between items-center w-full border-2 border-indigo-200 rounded-lg p-3 bg-indigo-50 transition-all">
-                                <div class="flex items-center">
-                                    <div class="bg-indigo-200 text-indigo-700 rounded-full w-8 h-8 flex items-center justify-center mr-3">
-                                        <i class="fa-solid fa-user-check"></i>
+                        {{-- List User Terpilih (Pills) --}}
+                        @if(count($selectedUsers) > 0)
+                            <div class="mb-3 flex flex-wrap gap-2">
+                                @foreach($selectedUsers as $sUser)
+                                    <div class="flex items-center bg-indigo-100 text-indigo-800 px-3 py-1.5 rounded-full text-sm font-medium border border-indigo-200 shadow-sm transition-all hover:bg-indigo-200">
+                                        <i class="fa-solid fa-user text-indigo-500 mr-2 text-xs"></i>
+                                        {{ $sUser['name'] }}
+                                        <button type="button" wire:click="removeUser({{ $sUser['id'] }})" class="ml-2 text-indigo-400 hover:text-red-500 focus:outline-none transition-colors" title="Hapus User">
+                                            <i class="fa-solid fa-xmark"></i>
+                                        </button>
                                     </div>
-                                    <div class="font-bold text-indigo-900">{{ $selectedUserName }}</div>
-                                </div>
-                                <button type="button" wire:click="removeUser" class="text-red-400 hover:text-red-600 focus:outline-none bg-white rounded-md p-1 shadow-sm border border-red-100" title="Ganti User">
-                                    <i class="fa-solid fa-xmark w-4 h-4 text-center"></i>
-                                </button>
+                                @endforeach
                             </div>
-                        @else
+                        @endif
+
+                        {{-- Input Search --}}
+                        @if(count($selectedUsers) < 10)
                             <div class="relative">
                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <i class="fa-solid fa-search text-gray-400"></i>
@@ -62,28 +66,36 @@
                                 </div>
                             </div>
 
+                            {{-- Dropdown Results --}}
                             @if(strlen($userSearch) >= 2)
                                 <div class="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
                                     @forelse($this->dropdownUsers as $user)
                                         @php
-                                            // Mutual Disable: Cek apakah user ini sudah punya salah satu tryout yang keburu dicentang admin
-                                            $alreadyHas = in_array($user->id, $existingUserIds);
+                                            // Cek jika user sudah dipilih
+                                            $isAlreadySelected = collect($selectedUsers)->contains('id', $user->id);
+                                            // Mutual Disable: Cek jika user ini sudah punya salah satu tryout yang dicentang admin
+                                            $alreadyHasTryout = in_array($user->id, $existingUserIds);
+                                            $isDisabled = $isAlreadySelected || $alreadyHasTryout;
                                         @endphp
                                         
-                                        <div @if(!$alreadyHas) wire:click="selectUser({{ $user->id }}, '{{ addslashes($user->name) }}')" @endif 
-                                             class="{{ $alreadyHas ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'cursor-pointer hover:bg-indigo-50' }} px-4 py-3 border-b border-gray-100 transition-colors last:border-b-0 flex justify-between items-center group">
+                                        <div @if(!$isDisabled) wire:click="selectUser({{ $user->id }}, '{{ addslashes($user->name) }}')" @endif 
+                                             class="{{ $isDisabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'cursor-pointer hover:bg-indigo-50' }} px-4 py-3 border-b border-gray-100 transition-colors last:border-b-0 flex justify-between items-center group">
                                             <div>
-                                                <div class="font-medium {{ $alreadyHas ? 'text-gray-400' : 'text-gray-900 group-hover:text-indigo-700' }}">
+                                                <div class="font-medium {{ $isDisabled ? 'text-gray-400' : 'text-gray-900 group-hover:text-indigo-700' }}">
                                                     {{ $user->name }}
-                                                    @if($alreadyHas)
+                                                    @if($isAlreadySelected)
+                                                        <span class="block mt-0.5 text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-sm w-fit">
+                                                            <i class="fa-solid fa-check"></i> Sedang Dipilih
+                                                        </span>
+                                                    @elseif($alreadyHasTryout)
                                                         <span class="block mt-0.5 text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-sm w-fit">
-                                                            <i class="fa-solid fa-ban"></i> Sudah punya Tryout yang dipilih
+                                                            <i class="fa-solid fa-ban"></i> Punya Tryout Terpilih
                                                         </span>
                                                     @endif
                                                 </div>
                                                 <div class="text-xs text-gray-500">{{ $user->email }}</div>
                                             </div>
-                                            @if(!$alreadyHas)
+                                            @if(!$isDisabled)
                                                 <i class="fa-solid fa-plus text-indigo-200 group-hover:text-indigo-600"></i>
                                             @endif
                                         </div>
@@ -95,20 +107,31 @@
                                     @endforelse
                                 </div>
                             @endif
+                        @else
+                            <div class="text-sm text-red-600 flex items-center bg-red-50 p-3 rounded-lg border border-red-200 shadow-sm mt-2">
+                                <i class="fa-solid fa-circle-exclamation mr-2"></i> 
+                                Kuota maksimal 10 pengguna telah dipilih. Hapus pengguna lain jika ingin mengganti.
+                            </div>
                         @endif
                         
-                        @error('selectedUser') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                        @error('selectedUsers') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                     </div>
 
                     {{-- Info Tryout Terpilih --}}
                     <div class="mb-5 bg-indigo-50 p-4 rounded-lg border border-indigo-100">
-                        <div class="flex items-center">
-                            <div class="bg-indigo-100 p-2 rounded-full mr-3 text-indigo-600">
-                                <i class="fa-solid fa-file-signature"></i>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <div class="bg-indigo-100 p-2 rounded-full mr-3 text-indigo-600">
+                                    <i class="fa-solid fa-file-signature"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-indigo-800 font-medium">Tryout Terpilih</p>
+                                    <h4 class="text-2xl font-bold text-indigo-900">{{ count($selectedTryouts) }}</h4>
+                                </div>
                             </div>
-                            <div>
-                                <p class="text-sm text-indigo-800 font-medium">Tryout Terpilih</p>
-                                <h4 class="text-2xl font-bold text-indigo-900">{{ count($selectedTryouts) }}</h4>
+                            <div class="text-right border-l border-indigo-200 pl-4">
+                                <p class="text-sm text-indigo-800 font-medium">Total Assign</p>
+                                <h4 class="text-2xl font-bold text-indigo-900">{{ count($selectedTryouts) * count($selectedUsers) }}</h4>
                             </div>
                         </div>
                         @error('selectedTryouts') <span class="text-red-500 text-xs mt-2 block">{{ $message }}</span> @enderror
@@ -117,7 +140,7 @@
                     <button type="submit" 
                             class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                             wire:loading.attr="disabled"
-                            @if(count($selectedTryouts) === 0 || empty($selectedUser)) disabled @endif>
+                            @if(count($selectedTryouts) === 0 || count($selectedUsers) === 0) disabled @endif>
                         <span wire:loading.remove wire:target="assign">
                             <i class="fa-solid fa-paper-plane mr-2"></i> Assign Akses Sekarang
                         </span>
@@ -158,26 +181,26 @@
                         <tbody class="bg-white divide-y divide-gray-200">
                             @forelse ($tryouts as $tryout)
                                 @php
-                                    // Mutual Disable: Cek apakah tryout ini sudah dimiliki oleh user yang dipilih
-                                    $isOwned = in_array($tryout->id, $existingTryoutIds);
+                                    // Mutual Disable: Cek apakah tryout ini sudah dimiliki oleh SALAH SATU user yang dipilih
+                                    $isOwnedByAny = in_array($tryout->id, $existingTryoutIds);
                                 @endphp
                                 
-                                <tr class="{{ $isOwned ? 'bg-gray-50' : (in_array($tryout->id, $selectedTryouts) ? 'bg-indigo-50/50' : 'hover:bg-gray-50 transition-colors') }}">
+                                <tr class="{{ $isOwnedByAny ? 'bg-gray-50' : (in_array($tryout->id, $selectedTryouts) ? 'bg-indigo-50/50' : 'hover:bg-gray-50 transition-colors') }}">
                                     <td class="px-6 py-4">
                                         <input type="checkbox" 
                                                wire:model.live="selectedTryouts" 
                                                value="{{ $tryout->id }}" 
-                                               @if($isOwned) disabled checked @endif
-                                               class="rounded border-gray-300 {{ $isOwned ? 'text-gray-400 cursor-not-allowed' : 'text-indigo-600 focus:ring-indigo-500 cursor-pointer' }}">
+                                               @if($isOwnedByAny) disabled checked @endif
+                                               class="rounded border-gray-300 {{ $isOwnedByAny ? 'text-gray-400 cursor-not-allowed' : 'text-indigo-600 focus:ring-indigo-500 cursor-pointer' }}">
                                     </td>
                                     <td class="px-6 py-4">
-                                        <div class="font-medium {{ $isOwned ? 'text-gray-400 line-through' : 'text-gray-900' }}">
+                                        <div class="font-medium {{ $isOwnedByAny ? 'text-gray-400 line-through' : 'text-gray-900' }}">
                                             {{ $tryout->title }}
                                         </div>
                                         <div class="text-sm mt-1 flex items-center">
-                                            @if($isOwned)
+                                            @if($isOwnedByAny)
                                                 <span class="bg-gray-200 text-gray-600 text-[10px] px-2 py-0.5 rounded-full font-semibold">
-                                                    <i class="fa-solid fa-check mr-1"></i> Sudah Dimiliki
+                                                    <i class="fa-solid fa-users mr-1"></i> Dimiliki oleh user yang dipilih
                                                 </span>
                                             @else
                                                 @if($tryout->is_hots) <span class="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-full mr-2"><i class="fa-solid fa-fire"></i> HOTS</span> @endif
@@ -185,7 +208,7 @@
                                             @endif
                                         </div>
                                     </td>
-                                    <td class="px-6 py-4 text-center text-sm font-medium {{ $isOwned ? 'text-gray-400' : 'text-gray-900' }}">
+                                    <td class="px-6 py-4 text-center text-sm font-medium {{ $isOwnedByAny ? 'text-gray-400' : 'text-gray-900' }}">
                                         Rp {{ number_format($tryout->price, 0, ',', '.') }}
                                     </td>
                                 </tr>

@@ -22,9 +22,8 @@ class AssignTryout extends Component
     public $selectedTryouts = [];
     public $selectAll = false; 
 
-    // --- State: User ---
-    public $selectedUser = ''; 
-    public $selectedUserName = ''; 
+    // --- State: Users (Multiple) ---
+    public $selectedUsers = []; // Array of ['id' => id, 'name' => name]
     public $userSearch = ''; 
 
     // --- State: Mutual Disable (Pengecekan Akses) ---
@@ -32,13 +31,15 @@ class AssignTryout extends Component
     public $existingUserIds = [];   
 
     protected $rules = [
-        'selectedUser'      => 'required|exists:users,id',
+        'selectedUsers'     => 'required|array|min:1|max:10',
         'selectedTryouts'   => 'required|array|min:1',
         'selectedTryouts.*' => 'exists:tryouts,id',
     ];
 
     protected $messages = [
-        'selectedUser.required'     => 'Pilih satu User terlebih dahulu.',
+        'selectedUsers.required'    => 'Pilih minimal satu Pengguna.',
+        'selectedUsers.min'         => 'Pilih minimal satu Pengguna.',
+        'selectedUsers.max'         => 'Maksimal hanya bisa memilih 10 Pengguna sekaligus.',
         'selectedTryouts.required'  => 'Pilih setidaknya satu Tryout.',
         'selectedTryouts.min'       => 'Pilih setidaknya satu Tryout.',
     ];
@@ -70,33 +71,63 @@ class AssignTryout extends Component
 
     public function selectUser($id, $name)
     {
-        $this->selectedUser = $id;
-        $this->selectedUserName = $name;
-        $this->userSearch = ''; 
-        
-        $this->existingTryoutIds = UserTryout::where('id_user', $id)
-            ->pluck('tryout_id')
-            ->toArray();
+        // Cek Maksimal 10
+        if (count($this->selectedUsers) >= 10) {
+            $this->dispatch('swal-toast', ['icon' => 'warning', 'title' => 'Batas Maksimal', 'text' => 'Maksimal memilih 10 pengguna sekaligus.']);
+            return;
+        }
+
+        // Cek apakah sudah ada di list
+        if (!collect($this->selectedUsers)->contains('id', $id)) {
+            $this->selectedUsers[] = [
+                'id' => $id, 
+                'name' => $name
+            ];
             
-        $this->selectedTryouts = array_diff($this->selectedTryouts, $this->existingTryoutIds);
+            $this->updateMutualLogic();
+        }
+
+        $this->userSearch = ''; 
     }
 
-    public function removeUser()
+    public function removeUser($id)
     {
-        $this->selectedUser = '';
-        $this->selectedUserName = '';
-        $this->existingTryoutIds = [];
+        // Filter out user yang dihapus
+        $this->selectedUsers = collect($this->selectedUsers)
+            ->reject(fn($user) => $user['id'] == $id)
+            ->values()
+            ->toArray();
+            
+        $this->updateMutualLogic();
     }
 
     // ==========================================
     // FITUR: MUTUAL DISABLE LOGIC
     // ==========================================
 
+    private function updateMutualLogic()
+    {
+        if (empty($this->selectedUsers)) {
+            $this->existingTryoutIds = [];
+        } else {
+            // Ambil SEMUA tryout yang dimiliki oleh siapapun di dalam selectedUsers
+            $userIds = array_column($this->selectedUsers, 'id');
+            $this->existingTryoutIds = UserTryout::whereIn('id_user', $userIds)
+                ->pluck('tryout_id')
+                ->unique()
+                ->toArray();
+        }
+
+        // Bersihkan tryout yang sudah terlanjur dicentang, tapi ternyata sekarang di-disable
+        $this->selectedTryouts = array_diff($this->selectedTryouts, $this->existingTryoutIds);
+    }
+
     public function updatedSelectedTryouts()
     {
         if (count($this->selectedTryouts) > 0) {
             $this->existingUserIds = UserTryout::whereIn('tryout_id', $this->selectedTryouts)
                 ->pluck('id_user')
+                ->unique()
                 ->toArray();
         } else {
             $this->existingUserIds = [];
@@ -137,41 +168,44 @@ class AssignTryout extends Component
         DB::beginTransaction();
         try {
             $assignedCount = 0;
-            $user = User::find($this->selectedUser);
+            $userIds = array_column($this->selectedUsers, 'id');
+            $usersCount = count($userIds);
 
-            foreach ($this->selectedTryouts as $tryoutId) {
-                // Pastikan benar-benar belum punya (double check backend)
-                if (in_array($tryoutId, $this->existingTryoutIds)) {
-                    continue;
+            foreach ($userIds as $userId) {
+                // Ambil existing tryout secara spesifik per user untuk keamanan ganda backend
+                $userExistingTryouts = UserTryout::where('id_user', $userId)->pluck('tryout_id')->toArray();
+
+                foreach ($this->selectedTryouts as $tryoutId) {
+                    if (in_array($tryoutId, $userExistingTryouts)) {
+                        continue;
+                    }
+
+                    $orderId = 'MANUAL-' . strtoupper(Str::random(8)) . '-' . time();
+
+                    for ($attemptNumber = 1; $attemptNumber <= 3; $attemptNumber++) {
+                        UserTryout::create([
+                            'id_user'      => $userId,
+                            'tryout_id'    => $tryoutId,
+                            'attempt'      => $attemptNumber,
+                            'order_id'     => $orderId,
+                            'purchased_at' => now(),
+                            'is_completed' => 0,
+                        ]);
+                    }
+
+                    $assignedCount++;
                 }
-
-                // Buat satu order ID unik untuk penanda assign manual ini
-                $orderId = 'MANUAL-' . strtoupper(Str::random(8)) . '-' . time();
-
-                // Generate 3 kali percobaan (attempt 1, 2, dan 3)
-                for ($attemptNumber = 1; $attemptNumber <= 3; $attemptNumber++) {
-                    UserTryout::create([
-                        'id_user'      => $this->selectedUser,
-                        'tryout_id'    => $tryoutId,
-                        'attempt'      => $attemptNumber,
-                        'order_id'     => $orderId,
-                        'purchased_at' => now(),
-                        'is_completed' => 0,
-                    ]);
-                }
-
-                $assignedCount++;
             }
 
             DB::commit();
 
             // Reset Form
-            $this->reset(['selectedUser', 'selectedUserName', 'selectedTryouts', 'selectAll', 'searchTryout', 'existingTryoutIds', 'existingUserIds']);
+            $this->reset(['selectedUsers', 'selectedTryouts', 'selectAll', 'searchTryout', 'existingTryoutIds', 'existingUserIds']);
             
             // Trigger Auto Scroll ke atas
             $this->dispatch('scroll-to-top');
 
-            session()->flash('success', "Berhasil memberikan $assignedCount Tryout baru kepada {$user->name}.");
+            session()->flash('success', "Berhasil memberikan total $assignedCount akses Tryout baru kepada $usersCount pengguna.");
 
         } catch (\Exception $e) {
             DB::rollBack();
