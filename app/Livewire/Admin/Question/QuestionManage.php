@@ -108,11 +108,11 @@ class QuestionManage extends Component
     {
         if (empty($this->answers)) {
             $this->answers = [
-                ['answer' => '', 'is_correct' => false, 'points' => 0],
-                ['answer' => '', 'is_correct' => false, 'points' => 0],
-                ['answer' => '', 'is_correct' => false, 'points' => 0],
-                ['answer' => '', 'is_correct' => false, 'points' => 0],
-                ['answer' => '', 'is_correct' => false, 'points' => 0],
+                ['id' => null, 'answer' => '', 'is_correct' => false, 'points' => 0],
+                ['id' => null, 'answer' => '', 'is_correct' => false, 'points' => 0],
+                ['id' => null, 'answer' => '', 'is_correct' => false, 'points' => 0],
+                ['id' => null, 'answer' => '', 'is_correct' => false, 'points' => 0],
+                ['id' => null, 'answer' => '', 'is_correct' => false, 'points' => 0],
             ];
         }
     }
@@ -199,7 +199,7 @@ class QuestionManage extends Component
     public function addAnswer()
     {
         if (count($this->answers) < 8) {
-            $this->answers[] = ['answer' => '', 'is_correct' => false, 'points' => 0];
+            $this->answers[] = ['id' => null, 'answer' => '', 'is_correct' => false, 'points' => 0];
             $this->resetAnswerErrors();
             $this->resetFieldErrors();
         }
@@ -414,14 +414,15 @@ class QuestionManage extends Component
         $this->answers = [];
         foreach ($question->answers as $answer) {
             $this->answers[] = [
-                'answer' => $answer->answer,
+                'id'         => $answer->id, // <-- PENTING: Ambil ID Jawaban
+                'answer'     => $answer->answer,
                 'is_correct' => $answer->is_correct,
-                'points' => $answer->points,
+                'points'     => $answer->points,
             ];
         }
 
         while (count($this->answers) < 5) {
-            $this->answers[] = ['answer' => '', 'is_correct' => false, 'points' => 0];
+            $this->answers[] = ['id' => null, 'answer' => '', 'is_correct' => false, 'points' => 0];
         }
 
         $this->isEdit = true;
@@ -453,15 +454,30 @@ class QuestionManage extends Component
                 'is_active' => $this->is_active,
             ]);
 
-            $question->answers()->delete();
+            // 1. Kumpulkan ID jawaban yang dikirim dari form (yang bukan null)
+            $submittedAnswerIds = collect($this->answers)->pluck('id')->filter()->toArray();
+
+            // 2. Hapus HANYA jawaban lama yang tidak ada di list form saat ini (berarti dihapus admin)
+            $question->answers()->whereNotIn('id', $submittedAnswerIds)->delete();
             
+            // 3. Simpan atau Perbarui Jawaban
             foreach ($this->answers as $index => $answerData) {
-                Answer::create([
-                    'id_question' => $question->id,
-                    'answer' => $answerData['answer'],
-                    'is_correct' => $answerData['is_correct'],
-                    'points' => $answerData['points'] ?: 0,
-                ]);
+                if (!empty($answerData['id'])) {
+                    // Jika punya ID, UPDATE data lama (ID tidak berubah, tabel user aman!)
+                    Answer::where('id', $answerData['id'])->update([
+                        'answer'     => $answerData['answer'],
+                        'is_correct' => $answerData['is_correct'],
+                        'points'     => $answerData['points'] ?: 0,
+                    ]);
+                } else {
+                    // Jika tidak punya ID (jawaban baru ditambah via tombol +), CREATE baru
+                    Answer::create([
+                        'id_question' => $question->id,
+                        'answer'      => $answerData['answer'],
+                        'is_correct'  => $answerData['is_correct'],
+                        'points'      => $answerData['points'] ?: 0,
+                    ]);
+                }
             }
 
             $this->loadQuestionsNavigation();
