@@ -128,11 +128,11 @@
                             </form>
                         </div>
                     </div>
-                {{-- @else
+                @else
                     <div class="hidden md:flex items-center space-x-3">
                         <a href="{{ route('login') }}" class="px-4 py-2 text-primary border border-primary rounded-full font-medium hover:bg-primary hover:text-white transition-colors">Login</a>
                         <a href="{{ route('register') }}" class="px-4 py-2 bg-primary text-white rounded-full font-medium hover:bg-primary-dark transition-colors">Daftar</a>
-                    </div> --}}
+                    </div>
                 @endauth
 
                 {{-- TOMBOL HAMBURGER MOBILE (ANIMASI X) --}}
