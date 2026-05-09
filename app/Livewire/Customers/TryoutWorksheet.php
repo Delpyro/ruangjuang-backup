@@ -19,8 +19,10 @@ class TryoutWorksheet extends Component
 {
     public Tryout $tryout;
     public $userTryout;
-    public $endTime;
     public $title;
+    
+    // ✨ BARU: Menyimpan sisa waktu dalam detik, bukan string ISO
+    public int $remainingSeconds = 0; 
 
     // --- State Minimalis (Hanya ID & Index) ---
     public array $questionIds = []; 
@@ -55,7 +57,10 @@ class TryoutWorksheet extends Component
         }
 
         $this->userTryout = $userTryout;
-        $this->endTime = $userTryout->ended_at->toIso8601String();
+        
+        // ✨ BARU: Hitung selisih waktu sekarang dengan waktu berakhir di server (dalam detik)
+        $sisaWaktu = Carbon::now()->diffInSeconds($userTryout->ended_at, false);
+        $this->remainingSeconds = $sisaWaktu > 0 ? (int) $sisaWaktu : 0;
 
         $this->initWorksheet();
     }

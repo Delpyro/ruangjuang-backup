@@ -87,20 +87,36 @@
             if(el) el.scrollTop = 0;
         },
 
+        {{-- ✨ BARU: Logika Timer yang kebal dari manipulasi jam komputer --}}
         initializeTimer() {
-            const endTime = @js($endTime);
-            if (!endTime) return;
-            const targetTime = new Date(endTime).getTime();
+            // Ambil sisa detik dari server (PHP)
+            let remainingSeconds = @js($remainingSeconds);
             const timerEl = document.getElementById('timer');
 
+            // Jika waktu memang sudah habis sejak halaman dimuat
+            if (remainingSeconds <= 0) {
+                timerEl.textContent = '00:00';
+                $wire.finishExam();
+                return;
+            }
+
+            // Gunakan performance.now() agar aman dari manipulasi jam lokal
+            const startTime = performance.now();
+
             const timerInterval = setInterval(() => {
-                const now = new Date().getTime();
-                const diff = targetTime - now;
-                if (diff > 0) {
-                    const m = Math.floor(diff / 60000);
-                    const s = Math.floor((diff % 60000) / 1000);
+                // Hitung berapa detik yang sudah berlalu sejak timer dimulai
+                const elapsedSeconds = Math.floor((performance.now() - startTime) / 1000);
+                
+                // Sisa waktu saat ini
+                const currentRemaining = remainingSeconds - elapsedSeconds;
+
+                if (currentRemaining > 0) {
+                    // Konversi ke format Menit:Detik
+                    const m = Math.floor(currentRemaining / 60);
+                    const s = Math.floor(currentRemaining % 60);
                     timerEl.textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
                 } else {
+                    // Waktu habis
                     clearInterval(timerInterval);
                     timerEl.textContent = '00:00';
                     $wire.finishExam();

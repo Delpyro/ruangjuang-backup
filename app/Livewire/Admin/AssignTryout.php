@@ -50,7 +50,7 @@ class AssignTryout extends Component
     }
 
     // ==========================================
-    // FITUR: SEARCHABLE USER 
+    // FITUR: SEARCHABLE USER (DENGAN RELEVANCE SORT)
     // ==========================================
     
     #[Computed]
@@ -60,12 +60,25 @@ class AssignTryout extends Component
             return [];
         }
 
+        $search = $this->userSearch;
+
         return User::where('is_active', true)
-            ->where(function ($query) {
-                $query->where('name', 'like', '%' . $this->userSearch . '%')
-                      ->orWhere('email', 'like', '%' . $this->userSearch . '%');
+            ->where(function ($query) use ($search) {
+                $query->where('name', 'like', '%' . $search . '%')
+                      ->orWhere('email', 'like', '%' . $search . '%');
             })
-            ->limit(5)
+            // ✨ BARU: Logika Pengurutan Berdasarkan Tingkat Kecocokan (Relevansi)
+            ->orderByRaw("
+                CASE 
+                    WHEN name = ? THEN 1           -- Prioritas 1: Nama Cocok Persis (Exact Match)
+                    WHEN name LIKE ? THEN 2        -- Prioritas 2: Nama Dimulai Dengan Kata Pencarian
+                    WHEN email = ? THEN 3          -- Prioritas 3: Email Cocok Persis
+                    WHEN email LIKE ? THEN 4       -- Prioritas 4: Email Dimulai Dengan Kata Pencarian
+                    ELSE 5                         -- Prioritas 5: Kata berada di tengah/akhir nama (Match Anywhere)
+                END ASC
+            ", [$search, $search . '%', $search, $search . '%'])
+            ->orderBy('name', 'asc') // Fallback: Jika prioritasnya sama, urutkan sesuai abjad
+            ->limit(20)
             ->get();
     }
 
