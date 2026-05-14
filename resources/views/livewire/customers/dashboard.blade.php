@@ -93,7 +93,7 @@
                     <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">SIAP TEMBUS TES KEDINASAN & CPNS</h1>
                     <p class="text-xl md:text-2xl mb-8 font-light">Raih impianmu dengan persiapan materi dan Try Out terbaik di Ruang Juang</p>
                     <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                        <a href="{{ route('register') }}" class="px-8 py-4 bg-white text-primary rounded-full font-semibold text-lg hover:bg-gray-100 transition-colors flex items-center justify-center space-x-2">
+                        <a href="{{ route('tryout.index') }}" class="px-8 py-4 bg-white text-primary rounded-full font-semibold text-lg hover:bg-gray-100 transition-colors flex items-center justify-center space-x-2">
                             <span>Daftar Try Out</span>
                             <i class="fas fa-arrow-right"></i>
                         </a>
