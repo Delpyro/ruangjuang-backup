@@ -123,6 +123,6 @@ class TryoutDiscussionWorksheet extends Component
     public function render()
     {
         return view('livewire.customers.tryout-discussion-worksheet')
-                    ->layout('layouts.blank', ['title' => 'Pembahasan: ' . $this->tryout->title]);
+                    ->layout('layouts.blank');
     }
 }

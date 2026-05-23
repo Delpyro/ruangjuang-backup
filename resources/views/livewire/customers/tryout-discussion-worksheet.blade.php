@@ -68,7 +68,7 @@
                         <div class="p-2 mb-2 rounded-lg bg-blue-600 text-white font-bold text-center text-sm md:text-base uppercase" x-text="currentQuestion.category_name + ' - ' + currentQuestion.subcategory_name">
                         </div>
                         
-                        <div class="mb-3 text-gray-800"> 
+                        <div class="mb-3 text-gray-800 tinymce-content"> 
                             <span class="float-left mr-2 flex-shrink-0 font-bold text-base md:text-lg" x-text="(currentIndex + 1) + '.'"></span>
                             <div class="overflow-x-auto" x-html="currentQuestion.question_html"></div> 
                         </div>
@@ -86,7 +86,7 @@
                                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center px-3 py-2 border rounded transition w-full"
                                      :class="ans.highlight_class">
                                     {{-- Teks Jawaban --}}
-                                    <div class="flex items-start flex-1 min-w-0 w-full">
+                                    <div class="flex items-start flex-1 min-w-0 w-full tinymce-content">
                                         <span class="font-bold mr-2 w-4 flex-shrink-0 text-left text-base" x-text="ans.letter + '.'"></span>
                                         <div class="max-w-none flex-1 min-w-0 overflow-x-auto" x-html="ans.answer_html"></div>
                                     </div>
@@ -112,7 +112,7 @@
                                     </svg>
                                     Penjelasan
                                 </summary>
-                                <div class="max-w-none mt-3 p-4 bg-indigo-50 rounded-lg text-gray-800 overflow-x-auto">
+                                <div class="max-w-none mt-3 p-4 bg-indigo-50 rounded-lg text-gray-800 overflow-x-auto tinymce-content">
                                     <template x-if="currentQuestion.explanation_html">
                                         <div x-html="currentQuestion.explanation_html"></div>
                                     </template>

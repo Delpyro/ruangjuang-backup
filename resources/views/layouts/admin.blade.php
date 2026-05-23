@@ -161,7 +161,7 @@
 @livewireScripts
 @stack('scripts') 
 
-<script src="https://cdn.tiny.cloud/1/xbpw4yexvvv3m8dgr8dpf3u86zxmhs18gap5a2nlo1k5egot/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+<script src="https://cdn.tiny.cloud/1/hij31kssmrwqw38cius6ogyqd7fzva1z4fmrddwy8uh05d2q/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
 
 {{-- SWEETALERT2 SCRIPT --}}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
