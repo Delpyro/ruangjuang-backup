@@ -173,33 +173,31 @@ class MidtransService
     /**
      * Handle Midtrans notification (webhook)
      */
+    /**
+     * Handle Midtrans notification (webhook)
+     */
     public function handleNotification(array $notificationData = null)
     {
-        // Bungkus semua logika dalam try-catch untuk menangani kegagalan transaksi DB
         try {
-            // Memulai Database Transaction
-            $result = DB::transaction(function () use ($notificationData) {
+            return DB::transaction(function () use ($notificationData) {
 
                 Log::info('🔄 Starting Midtrans Notification Processing', [
                     'notification_data' => $notificationData
                 ]);
 
-                // Gunakan data yang diberikan atau buat dari POST global
+                // 1. Ambil Data Notifikasi
                 if ($notificationData) {
                     $notification = (object) $notificationData;
                 } else {
                     $rawPostInput = file_get_contents('php://input');
                     $notification = json_decode($rawPostInput);
-                    
                     if (!$notification) {
                         $notification = (object) $_POST;
                     }
                 }
 
-                // Validasi data notifikasi
                 if (!isset($notification->order_id)) {
                     Log::error('❌ Invalid notification: missing order_id');
-                    // Lempar exception untuk membatalkan transaksi DB
                     throw new \Exception('Invalid notification data: missing order_id');
                 }
 
@@ -213,7 +211,7 @@ class MidtransService
                     'fraud_status' => $fraudStatus,
                 ]);
 
-                // Validasi signature key (optional tapi recommended)
+                // 2. Validasi Signature
                 if (!$this->validateSignature(
                     $orderId, 
                     $notification->status_code ?? '200', 
@@ -221,31 +219,31 @@ class MidtransService
                     $signatureKey
                 )) {
                     Log::warning('⚠️ Signature validation failed', ['order_id' => $orderId]);
-                    // throw new \Exception('Invalid signature key'); // Bisa dilempar jika ingin ketat
                 }
 
-                // --- PENTING ---
-                // Cari transaction berdasarkan order_id DAN kunci barisnya
-                $transaction = Transaction::where('order_id', $orderId)
-                    // Eager load relasi User, Tryout, dan Bundle
+                // --- PERBAIKAN 1: PECAH ID AGAR KEBAL REFRESH ---
+                // Format order_id kita adalah: PREFIX-ID-TIMESTAMP (contoh: BUNDLE-808-1779392619)
+                $parts = explode('-', $orderId);
+                $transactionId = isset($parts[1]) ? (int) $parts[1] : null;
+
+                if (!$transactionId) {
+                    Log::warning("⚠️ Format order_id tidak dikenali: {$orderId}, diabaikan.");
+                    return ['success' => true, 'message' => 'Ignored unrecognized format'];
+                }
+
+                // 3. Cari Transaksi Berdasarkan ID Utama
+                $transaction = Transaction::where('id', $transactionId)
                     ->with(['user', 'tryout', 'bundle']) 
-                    ->lockForUpdate() // Kunci baris ini selama transaksi
+                    ->lockForUpdate() 
                     ->first();
                     
+                // --- PERBAIKAN 2: GRACEFUL NOT FOUND ---
                 if (!$transaction) {
-                    Log::error("❌ Transaction not found for order: {$orderId}");
-                    // Lempar exception untuk membatalkan transaksi DB
-                    throw new \Exception('Transaction not found in database');
+                    Log::warning("⚠️ Transaction ID {$transactionId} tidak ditemukan di database. Membalas OK agar Midtrans berhenti retry.");
+                    return ['success' => true, 'message' => 'Transaction not found, acknowledged'];
                 }
 
-                Log::info("📊 Status Update Attempt", [
-                    'order_id' => $orderId,
-                    'current_status' => $transaction->status,
-                    'new_status' => $transactionStatus,
-                    'fraud_status' => $fraudStatus
-                ]);
-
-                // --- LOGIKA UPDATE STATUS ---
+                // 4. Mapping Status
                 $statusMap = [
                     'capture' => $fraudStatus == self::FRAUD_ACCEPT ? Transaction::STATUS_SETTLEMENT : Transaction::STATUS_PENDING,
                     'settlement' => Transaction::STATUS_SETTLEMENT,
@@ -257,32 +255,38 @@ class MidtransService
 
                 $shouldUpdate = false;
 
+                // 5. Update Status & Gembok Keamanan
                 if (isset($statusMap[$transactionStatus])) {
                     $newStatus = $statusMap[$transactionStatus];
                     
+                    // --- PERBAIKAN 3: GEMBOK STATUS (ANTI-DOWNGRADE) ---
+                    // Cegah status Expire/Cancel menimpa status yang sudah Settlement
+                    if ($transaction->status === Transaction::STATUS_SETTLEMENT && $newStatus !== Transaction::STATUS_REFUND) {
+                        Log::info("🛡️ Ignored callback {$transactionStatus} for {$orderId} because transaction is already SETTLEMENT.");
+                        return ['success' => true, 'transaction' => $transaction, 'updated' => false];
+                    } 
+                    
+                    // Update status baru jika belum dilock
                     if ($transaction->status !== $newStatus) {
                         $transaction->status = $newStatus;
                         $shouldUpdate = true;
                         Log::info("🔄 Status changed: {$transaction->status} → {$newStatus}");
                     }
-                    
-                    // Update settlement time jika status settlement
+
+                    // 6. Update Settlement Time & Eksekusi Akses
                     if ($transactionStatus == 'settlement') {
-                        
-                        // Cek apakah settlement_time sudah diisi, 
-                        // agar grantAccess tidak jalan 2x jika notifikasi dobel
-                        if (is_null($transaction->settlement_time) || $transaction->status !== Transaction::STATUS_SETTLEMENT) {
-                            
+                        if (is_null($transaction->settlement_time)) {
+                            // --- PERBAIKAN 4: NULL COALESCING ---
                             $transaction->settlement_time = $notification->settlement_time ?? now();
                             $transaction->fraud_status = self::FRAUD_ACCEPT;
                             $shouldUpdate = true;
                             
-                            // Berikan akses item (universal: Tryout/Bundle)
+                            // Eksekusi pemberian akses Tryout/Bundle ke User
                             $this->grantAccess($transaction); 
                         }
                     }
 
-                    // Update data tambahan
+                    // 7. Update Metadata Tambahan
                     if (isset($notification->transaction_id) && $notification->transaction_id != $transaction->transaction_id) {
                         $transaction->transaction_id = $notification->transaction_id;
                         $shouldUpdate = true;
@@ -304,42 +308,30 @@ class MidtransService
                         }
                     }
 
-                    // Save hanya jika ada perubahan
+                    // 8. Simpan Perubahan
                     if ($shouldUpdate) {
                         $transaction->save(); 
-                        
-                        Log::info("✅ Transaction {$orderId} updated successfully", [
+                        Log::info("✅ Transaction {$transactionId} updated successfully", [
                             'new_status' => $transaction->status,
-                            'fraud_status' => $transaction->fraud_status,
                             'settlement_time' => $transaction->settlement_time
                         ]);
                     } else {
-                        Log::info("ℹ️ No changes needed for transaction {$orderId} (Status already {$transaction->status})");
+                        Log::info("ℹ️ No changes needed for transaction {$transactionId} (Status already {$transaction->status})");
                     }
-
                 } else {
-                    Log::warning("⚠️ Unknown transaction status: {$transactionStatus}", [
-                        'order_id' => $orderId
-                    ]);
+                    Log::warning("⚠️ Unknown transaction status: {$transactionStatus} for ID {$transactionId}");
                 }
 
-                // Kembalikan data sukses dari dalam closure transaksi
                 return [
                     'success' => true, 
                     'transaction' => $transaction,
                     'updated' => $shouldUpdate
                 ];
-
-            }); // --- Akhir dari DB::transaction ---
-
-            // Jika transaksi DB berhasil, kembalikan hasilnya
-            return $result;
+            });
 
         } catch (\Exception $e) {
-            // Jika DB::transaction gagal (karena exception)
             Log::error('💥 ERROR in handleNotification (Transaction Rollback): ' . $e->getMessage());
             Log::error('Stack trace: ' . $e->getTraceAsString());
-            Log::error('File: ' . $e->getFile() . ' Line: ' . $e->getLine());
             
             return [
                 'success' => false, 
