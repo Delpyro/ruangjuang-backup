@@ -514,9 +514,9 @@ class QuestionManage extends Component
         }
 
         foreach ($this->answers as $index => $answer) {
-            if ($answer['is_correct'] && empty(trim(strip_tags($answer['answer'])))) {
+            if ($answer['is_correct'] && !$this->answerHasContent($answer['answer'])) {
                 $letter = $this->getAnswerLetter($index);
-                throw new \Exception("Jawaban {$letter} yang ditandai sebagai benar harus memiliki teks jawaban.");
+                throw new \Exception("Jawaban {$letter} yang ditandai sebagai benar harus memiliki teks atau gambar.");
             }
         }
     }
@@ -598,6 +598,20 @@ class QuestionManage extends Component
     {
         $letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
         return $letters[$index] ?? chr(65 + $index);
+    }
+
+    protected function answerHasContent($answerHtml)
+    {
+        // Kalau ada tag gambar, dianggap sudah ada konten
+        if (preg_match('/<img[^>]*>/i', $answerHtml)) {
+            return true;
+        }
+
+        // Kalau nggak ada gambar, cek teksnya (decode entity spt &nbsp; biar nggak lolos palsu)
+        $text = trim(html_entity_decode(strip_tags($answerHtml), ENT_QUOTES | ENT_HTML5));
+        $text = str_replace("\xC2\xA0", '', $text); // buang non-breaking space
+
+        return $text !== '';
     }
 
     public function updatingSearch()
