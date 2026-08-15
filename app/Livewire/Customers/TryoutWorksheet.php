@@ -122,41 +122,61 @@ class TryoutWorksheet extends Component
     }
 
     /**
-     * Simpan Jawaban
+     * [FIX 1 & 4] Simpan Jawaban DAN pindah ke soal berikutnya dalam 1 Livewire roundtrip.
+     * Dipanggil oleh tombol "Simpan & Lanjutkan" (bukan soal terakhir).
+     */
+    public function saveAnswerAndNext($answerId, $isDoubtful = false)
+    {
+        $this->saveAnswerToDb($answerId, $isDoubtful);
+
+        if ($this->currentIndex < $this->totalQuestions - 1) {
+            $this->currentIndex++;
+        }
+    }
+
+    /**
+     * Simpan Jawaban tanpa pindah soal.
+     * Dipanggil oleh tombol "Simpan & Kumpulkan" (soal terakhir).
      */
     public function saveAnswer($answerId, $isDoubtful = false)
     {
+        $this->saveAnswerToDb($answerId, $isDoubtful);
+    }
+
+    /**
+     * [PRIVATE] Core logic penyimpanan jawaban ke DB.
+     * [FIX 4] Menggunakan Cache untuk query poin agar tidak hit DB setiap klik.
+     */
+    private function saveAnswerToDb($answerId, $isDoubtful = false)
+    {
         $questionId = $this->questionIds[$this->currentIndex];
 
-        // Hitung poin di server (Security)
+        // [FIX 4] Cache poin per jawaban selama 1 jam — poin tidak berubah saat ujian
         $points = 0;
         if ($answerId) {
-            $points = DB::table('answers')->where('id', $answerId)->value('points') ?? 0;
+            $points = Cache::remember("answer_points_{$answerId}", 3600, function () use ($answerId) {
+                return DB::table('answers')->where('id', $answerId)->value('points') ?? 0;
+            });
         }
 
         UserAnswer::updateOrCreate(
             ['user_tryout_id' => $this->userTryout->id, 'question_id' => $questionId],
             [
-                'id_user' => Auth::id(),
-                'answer_id' => $answerId,
+                'id_user'     => Auth::id(),
+                'answer_id'   => $answerId,
                 'is_doubtful' => $isDoubtful,
-                'score' => $points
+                'score'       => $points,
             ]
         );
 
-        // Update UI status lokal (Sidebar)
+        // Update status sidebar lokal (ringan, hanya flag)
         $this->questionStatus[$questionId] = [
-            'answered' => !is_null($answerId),
+            'answered'    => !is_null($answerId),
             'is_doubtful' => $isDoubtful,
-            'selected_id' => $answerId
+            'selected_id' => $answerId,
         ];
 
         $this->calculateProgress();
-
-        // Auto-next ke soal berikutnya jika bukan soal terakhir
-        if ($this->currentIndex < $this->totalQuestions - 1) {
-            $this->currentIndex++;
-        }
     }
 
     private function calculateProgress()
@@ -179,51 +199,60 @@ class TryoutWorksheet extends Component
         DB::transaction(function () use ($userTryout) {
             $userTryout->update([
                 'is_completed' => true,
-                'ended_at' => Carbon::now()
+                'ended_at'     => Carbon::now(),
             ]);
 
             if ($userTryout->attempt == 1) {
                 $savedAnswers = UserAnswer::where('user_tryout_id', $userTryout->id)->get();
-                $totalScore = $savedAnswers->sum('score');
+                $totalScore   = $savedAnswers->sum('score');
 
                 // 1. Simpan Ranking
                 Ranking::updateOrCreate(
                     ['id_user' => Auth::id(), 'tryout_id' => $userTryout->tryout_id],
-                    ['score' => $totalScore]
+                    ['score'   => $totalScore]
                 );
 
-                // 2. Kalkulasi Rapor per Kategori (Optimized with GroupBy)
+                // 2. [FIX 2] Kalkulasi Rapor per Kategori — kumpulkan semua record dulu,
+                //    lalu simpan sekaligus dengan upsert() → 1 query, bukan N query!
                 $answersByQuestion = $savedAnswers->keyBy('question_id');
                 $questions = $this->tryout->activeQuestions()->get(['id', 'id_question_categories']);
-                
+
+                // Hitung summary per kategori
                 $summary = [];
                 foreach ($questions as $q) {
                     $catId = $q->id_question_categories;
-                    $ans = $answersByQuestion->get($q->id);
-                    
+                    $ans   = $answersByQuestion->get($q->id);
+
                     if (!isset($summary[$catId])) {
-                        // Bagian ini sudah diganti menggunakan key 'unanswered'
-                        $summary[$catId] = ['score' => 0, 'correct' => 0, 'wrong' => 0, 'unanswered' => 0, 'total' => 0];
+                        $summary[$catId] = ['score' => 0, 'total' => 0];
                     }
 
                     $summary[$catId]['total']++;
-                    
+
                     if ($ans && $ans->answer_id) {
                         $summary[$catId]['score'] += $ans->score;
-                        // Logika is_correct bisa ditambah jika field tersedia di tabel answers
-                    } else {
-                        // Sekarang ini tidak akan error lagi
-                        $summary[$catId]['unanswered']++;
                     }
                 }
 
+                // [FIX 2] Siapkan array records lalu 1x upsert — jauh lebih ringan dari loop updateOrCreate
+                $now     = Carbon::now();
+                $records = [];
                 foreach ($summary as $catId => $stat) {
-                    TryoutCategoryScore::updateOrCreate(
-                        ['user_tryout_id' => $userTryout->id, 'question_category_id' => $catId],
-                        [
-                            'score' => $stat['score'],
-                            'total_questions' => $stat['total'],
-                        ]
+                    $records[] = [
+                        'user_tryout_id'       => $userTryout->id,
+                        'question_category_id' => $catId,
+                        'score'                => $stat['score'],
+                        'total_questions'      => $stat['total'],
+                        'created_at'           => $now,
+                        'updated_at'           => $now,
+                    ];
+                }
+
+                if (!empty($records)) {
+                    TryoutCategoryScore::upsert(
+                        $records,
+                        ['user_tryout_id', 'question_category_id'], // unique key
+                        ['score', 'total_questions', 'updated_at']  // kolom yang diupdate
                     );
                 }
             }

@@ -3,12 +3,13 @@
     x-data="{
         currentIndex: @entangle('currentIndex'),
         questionIds: @js($questionIds),
-        savedAnswers: @entangle('questionStatus').live, {{-- Hanya bawa ID & status --}}
+        savedAnswers: @entangle('questionStatus').live,
         localAnswerId: null,
         localIsDoubtful: false,
         isSaving: false,
-        isLoading: false, {{-- State untuk indikator loading --}}
+        isLoading: false,
         showSidebar: false,
+        pendingSaves: 0, {{-- [BUG FIX] Counter request simpan yang masih in-flight --}}
 
         init() {
             this.syncLocalWithServer();
@@ -17,6 +18,11 @@
             {{-- Watcher: Setiap pindah nomor soal, update pilihan radio di layar --}}
             $watch('currentIndex', () => {
                 this.syncLocalWithServer();
+            });
+
+            {{-- [BUG FIX] Listener untuk submit manual dari SweetAlert --}}
+            window.addEventListener('do-safe-finish-exam', () => {
+                this.safeFinishExam();
             });
         },
 
@@ -49,20 +55,29 @@
 
         async saveToDatabase() {
             this.isSaving = true;
+            this.pendingSaves++;
             try {
                 await $wire.saveAnswer(this.localAnswerId, this.localIsDoubtful);
             } catch (e) {
                 console.error('Gagal menyimpan:', e);
             } finally {
+                this.pendingSaves--;
                 this.isSaving = false;
             }
         },
 
         async saveAndNext() {
             this.isLoading = true;
-            await this.saveToDatabase();
-            this.scrollToTop();
-            this.isLoading = false;
+            this.pendingSaves++;
+            try {
+                await $wire.saveAnswerAndNext(this.localAnswerId, this.localIsDoubtful);
+            } catch (e) {
+                console.error('Gagal simpan & lanjut:', e);
+            } finally {
+                this.pendingSaves--;
+                this.scrollToTop();
+                this.isLoading = false;
+            }
         },
 
         async prev() {
@@ -87,41 +102,75 @@
             if(el) el.scrollTop = 0;
         },
 
-        {{-- ✨ BARU: Logika Timer yang kebal dari manipulasi jam komputer --}}
+        {{-- [BUG FIX] Timer: simpan jawaban aktif + tunggu semua save selesai sebelum finishExam --}}
         initializeTimer() {
-            // Ambil sisa detik dari server (PHP)
             let remainingSeconds = @js($remainingSeconds);
             const timerEl = document.getElementById('timer');
 
-            // Jika waktu memang sudah habis sejak halaman dimuat
             if (remainingSeconds <= 0) {
                 timerEl.textContent = '00:00';
-                $wire.finishExam();
+                this.safeFinishExam();
                 return;
             }
 
-            // Gunakan performance.now() agar aman dari manipulasi jam lokal
             const startTime = performance.now();
 
             const timerInterval = setInterval(() => {
-                // Hitung berapa detik yang sudah berlalu sejak timer dimulai
                 const elapsedSeconds = Math.floor((performance.now() - startTime) / 1000);
-                
-                // Sisa waktu saat ini
                 const currentRemaining = remainingSeconds - elapsedSeconds;
 
                 if (currentRemaining > 0) {
-                    // Konversi ke format Menit:Detik
                     const m = Math.floor(currentRemaining / 60);
                     const s = Math.floor(currentRemaining % 60);
                     timerEl.textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+
+                    {{-- Peringatan 5 menit --}}
+                    if (currentRemaining <= 300) {
+                        timerEl.classList.add('animate-pulse', 'bg-red-600');
+                        timerEl.classList.remove('bg-[#2563EA]');
+                    }
                 } else {
-                    // Waktu habis
                     clearInterval(timerInterval);
                     timerEl.textContent = '00:00';
-                    $wire.finishExam();
+                    this.safeFinishExam();
                 }
             }, 1000);
+        },
+
+        {{-- [BUG FIX] Simpan jawaban aktif & tunggu semua in-flight saves selesai, BARU finish --}}
+        async safeFinishExam() {
+            {{-- Step 1: Simpan jawaban soal yang sedang dibuka jika belum tersimpan --}}
+            const currentQId = this.questionIds[this.currentIndex];
+            const alreadySaved = this.savedAnswers[currentQId];
+            const currentSelectedId = this.localAnswerId;
+
+            if (currentSelectedId && (!alreadySaved || alreadySaved.selected_id != currentSelectedId)) {
+                this.pendingSaves++;
+                try {
+                    await $wire.saveAnswer(currentSelectedId, this.localIsDoubtful);
+                } catch(e) {
+                    console.error('Gagal simpan jawaban terakhir:', e);
+                } finally {
+                    this.pendingSaves--;
+                }
+            }
+
+            {{-- Step 2: Tunggu semua request simpan lain yang masih in-flight selesai --}}
+            const waitForPendingSaves = () => new Promise(resolve => {
+                const check = () => {
+                    if (this.pendingSaves <= 0) {
+                        resolve();
+                    } else {
+                        setTimeout(check, 200);
+                    }
+                };
+                check();
+            });
+
+            await waitForPendingSaves();
+
+            {{-- Step 3: Baru panggil finishExam --}}
+            $wire.finishExam();
         }
     }"
 >
@@ -158,7 +207,9 @@
 
             <div class="grid grid-cols-5 gap-2">
                 @foreach($questionIds as $index => $id)
-                    <button @click="goTo({{ $index }})"
+                    {{-- [FIX 3] wire:key agar Livewire skip diff sidebar saat re-render --}}
+                    <button wire:key="nav-btn-{{ $id }}"
+                            @click="goTo({{ $index }})"
                             :class="getNavClass({{ $index }})">
                         {{ $index + 1 }}
                     </button>
@@ -375,7 +426,7 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    window.addEventListener('show-finish-alert', () => {
+    window.addEventListener('show-finish-alert', (e) => {
         Swal.fire({
             title: "Kumpulkan Jawaban?",
             text: "Pastikan semua soal sudah kamu kerjakan.",
@@ -387,7 +438,9 @@
             cancelButtonText: "Cek Lagi"
         }).then((result) => {
             if (result.isConfirmed) {
-                @this.call('finishExam');
+                // [BUG FIX] Dispatch event ke Alpine agar safeFinishExam dijalankan
+                // (simpan jawaban aktif + tunggu pending saves dulu)
+                window.dispatchEvent(new CustomEvent('do-safe-finish-exam'));
             }
         });
     });
