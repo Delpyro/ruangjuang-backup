@@ -125,58 +125,86 @@ class TryoutWorksheet extends Component
      * [FIX 1 & 4] Simpan Jawaban DAN pindah ke soal berikutnya dalam 1 Livewire roundtrip.
      * Dipanggil oleh tombol "Simpan & Lanjutkan" (bukan soal terakhir).
      */
-    public function saveAnswerAndNext($answerId, $isDoubtful = false)
+    public function saveAnswerAndNext($answerId, $isDoubtful = false): bool
     {
-        $this->saveAnswerToDb($answerId, $isDoubtful);
+        $saved = $this->saveAnswerToDb($answerId, $isDoubtful);
 
         if ($this->currentIndex < $this->totalQuestions - 1) {
             $this->currentIndex++;
         }
+
+        return $saved;
     }
 
     /**
      * Simpan Jawaban tanpa pindah soal.
      * Dipanggil oleh tombol "Simpan & Kumpulkan" (soal terakhir).
      */
-    public function saveAnswer($answerId, $isDoubtful = false)
+    public function saveAnswer($answerId, $isDoubtful = false): bool
     {
-        $this->saveAnswerToDb($answerId, $isDoubtful);
+        return $this->saveAnswerToDb($answerId, $isDoubtful);
+    }
+
+    /**
+     * Cek apakah waktu ujian masih berlaku (dengan grace period 2 menit).
+     * Grace period dibutuhkan agar jawaban terakhir + bulk sync sempat masuk.
+     */
+    private function isWithinTimeLimit(): bool
+    {
+        if (!$this->userTryout || !$this->userTryout->ended_at) {
+            return false;
+        }
+
+        return Carbon::now()->isBefore(
+            Carbon::parse($this->userTryout->ended_at)->addMinutes(2)
+        );
     }
 
     /**
      * [PRIVATE] Core logic penyimpanan jawaban ke DB.
      * [FIX 4] Menggunakan Cache untuk query poin agar tidak hit DB setiap klik.
      */
-    private function saveAnswerToDb($answerId, $isDoubtful = false)
+    private function saveAnswerToDb($answerId, $isDoubtful = false): bool
     {
-        $questionId = $this->questionIds[$this->currentIndex];
+        try {
+            // Tolak penyimpanan jika sudah melewati deadline + grace period
+            if (!$this->isWithinTimeLimit()) {
+                return false;
+            }
 
-        // [FIX 4] Cache poin per jawaban selama 1 jam — poin tidak berubah saat ujian
-        $points = 0;
-        if ($answerId) {
-            $points = Cache::remember("answer_points_{$answerId}", 3600, function () use ($answerId) {
-                return DB::table('answers')->where('id', $answerId)->value('points') ?? 0;
-            });
-        }
+            $questionId = $this->questionIds[$this->currentIndex];
 
-        UserAnswer::updateOrCreate(
-            ['user_tryout_id' => $this->userTryout->id, 'question_id' => $questionId],
-            [
-                'id_user'     => Auth::id(),
-                'answer_id'   => $answerId,
+            // [FIX 4] Cache poin per jawaban selama 1 jam — poin tidak berubah saat ujian
+            $points = 0;
+            if ($answerId) {
+                $points = Cache::remember("answer_points_{$answerId}", 3600, function () use ($answerId) {
+                    return DB::table('answers')->where('id', $answerId)->value('points') ?? 0;
+                });
+            }
+
+            UserAnswer::updateOrCreate(
+                ['user_tryout_id' => $this->userTryout->id, 'question_id' => $questionId],
+                [
+                    'id_user'     => Auth::id(),
+                    'answer_id'   => $answerId,
+                    'is_doubtful' => $isDoubtful,
+                    'score'       => $points,
+                ]
+            );
+
+            // Update status sidebar lokal (ringan, hanya flag)
+            $this->questionStatus[$questionId] = [
+                'answered'    => !is_null($answerId),
                 'is_doubtful' => $isDoubtful,
-                'score'       => $points,
-            ]
-        );
+                'selected_id' => $answerId,
+            ];
 
-        // Update status sidebar lokal (ringan, hanya flag)
-        $this->questionStatus[$questionId] = [
-            'answered'    => !is_null($answerId),
-            'is_doubtful' => $isDoubtful,
-            'selected_id' => $answerId,
-        ];
-
-        $this->calculateProgress();
+            $this->calculateProgress();
+            return true;
+        } catch (\Exception $e) {
+            report($e);
+            return false;
+        }
     }
 
     private function calculateProgress()
@@ -215,12 +243,14 @@ class TryoutWorksheet extends Component
                 // 2. [FIX 2] Kalkulasi Rapor per Kategori — kumpulkan semua record dulu,
                 //    lalu simpan sekaligus dengan upsert() → 1 query, bukan N query!
                 $answersByQuestion = $savedAnswers->keyBy('question_id');
-                $questions = $this->tryout->activeQuestions()->get(['id', 'id_question_categories']);
+                // [BUG FIX] Ambil juga subCategory untuk fixing mapping kategori
+                $questions = $this->tryout->questions()->with('subCategory')->get(['id', 'id_question_categories', 'id_question_sub_category']);
 
                 // Hitung summary per kategori
                 $summary = [];
                 foreach ($questions as $q) {
-                    $catId = $q->id_question_categories;
+                    // [BUG FIX] Prioritaskan category dari subCategory jika ada
+                    $catId = $q->subCategory->question_category_id ?? $q->id_question_categories ?? 0;
                     $ans   = $answersByQuestion->get($q->id);
 
                     if (!isset($summary[$catId])) {
@@ -259,11 +289,93 @@ class TryoutWorksheet extends Component
         });
     }
 
+    /**
+     * Bulk save jawaban dari localStorage (recovery / sync).
+     * Dipanggil oleh Alpine saat page load atau sebelum submit untuk mengirim
+     * jawaban-jawaban yang gagal tersimpan sebelumnya.
+     */
+    public function bulkSaveAnswers(array $answers): array
+    {
+        $results = [];
+
+        // Tolak bulk save jika sudah melewati deadline + grace period
+        if (!$this->isWithinTimeLimit()) {
+            foreach ($answers as $item) {
+                $results[(int) ($item['questionId'] ?? 0)] = 'expired';
+            }
+            return $results;
+        }
+
+        $userId = Auth::id();
+
+        DB::beginTransaction();
+        try {
+            foreach ($answers as $item) {
+                $questionId = (int) ($item['questionId'] ?? 0);
+                $answerId   = isset($item['answerId']) ? (int) $item['answerId'] : null;
+                $isDoubtful = (bool) ($item['isDoubtful'] ?? false);
+
+                // Validasi: soal harus milik tryout ini
+                if (!in_array($questionId, $this->questionIds)) {
+                    $results[$questionId] = 'invalid';
+                    continue;
+                }
+
+                $points = 0;
+                if ($answerId) {
+                    $points = Cache::remember("answer_points_{$answerId}", 3600, function () use ($answerId) {
+                        return DB::table('answers')->where('id', $answerId)->value('points') ?? 0;
+                    });
+                }
+
+                UserAnswer::updateOrCreate(
+                    ['user_tryout_id' => $this->userTryout->id, 'question_id' => $questionId],
+                    [
+                        'id_user'     => $userId,
+                        'answer_id'   => $answerId,
+                        'is_doubtful' => $isDoubtful,
+                        'score'       => $points,
+                    ]
+                );
+
+                $this->questionStatus[$questionId] = [
+                    'answered'    => !is_null($answerId),
+                    'is_doubtful' => $isDoubtful,
+                    'selected_id' => $answerId,
+                ];
+
+                $results[$questionId] = 'ok';
+            }
+            DB::commit();
+            $this->calculateProgress();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            report($e);
+            foreach ($answers as $item) {
+                $qId = (int) ($item['questionId'] ?? 0);
+                if (!isset($results[$qId])) {
+                    $results[$qId] = 'error';
+                }
+            }
+        }
+
+        return $results;
+    }
+
     public function render()
     {
         return view('livewire.customers.tryout-worksheet', [
             // Pastikan menggunakan camelCase sesuai nama fungsi #[Computed]
             'currentQuestion' => $this->currentQuestion 
         ])->layout('layouts.blank');
+    }
+
+    /**
+     * Dummy method untuk keep-alive session
+     * Menjaga agar sesi PHP tidak expired (419) selama tryout berlangsung lama.
+     */
+    public function ping()
+    {
+        return true;
     }
 }

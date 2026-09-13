@@ -1,43 +1,204 @@
 <div class="flex flex-col h-screen"
     x-cloak
     x-data="{
+        // === Livewire Entangled State ===
         currentIndex: @entangle('currentIndex'),
         questionIds: @js($questionIds),
         savedAnswers: @entangle('questionStatus').live,
+
+        // === Local UI State ===
         localAnswerId: null,
         localIsDoubtful: false,
         isSaving: false,
         isLoading: false,
         showSidebar: false,
-        pendingSaves: 0, {{-- [BUG FIX] Counter request simpan yang masih in-flight --}}
+        isFinishing: false,
 
+        // === Reliability State ===
+        isOnline: navigator.onLine,
+        unsyncedCount: 0,
+        userTryoutId: @js($userTryout->id),
+
+        get storageKey() { return 'tryout_' + this.userTryoutId; },
+
+        // ============================
+        // === INIT ===
+        // ============================
         init() {
             this.syncLocalWithServer();
             this.initializeTimer();
 
-            {{-- Watcher: Setiap pindah nomor soal, update pilihan radio di layar --}}
-            $watch('currentIndex', () => {
-                this.syncLocalWithServer();
+            {{-- Watcher: pindah soal → update radio buttons --}}
+            $watch('currentIndex', () => this.syncLocalWithServer());
+
+            {{-- Listener: submit dari SweetAlert --}}
+            window.addEventListener('do-safe-finish-exam', () => this.safeFinishExam());
+
+            {{-- Keep-alive ping setiap 10 menit --}}
+            setInterval(() => { try { $wire.ping(); } catch(e) {} }, 600000);
+
+            {{-- Auto-sync jawaban gagal setiap 30 detik (skip jika sedang finishing) --}}
+            setInterval(() => { if (!this.isFinishing) this.autoSync(); }, 30000);
+
+            {{-- Online/offline detection --}}
+            window.addEventListener('online',  () => { this.isOnline = true; this.autoSync(); });
+            window.addEventListener('offline', () => { this.isOnline = false; });
+
+            {{-- Beforeunload: warning jika ada jawaban belum tersinkron --}}
+            window.addEventListener('beforeunload', (e) => {
+                if (this.unsyncedCount > 0) {
+                    e.preventDefault();
+                    e.returnValue = '';
+                }
             });
 
-            {{-- [BUG FIX] Listener untuk submit manual dari SweetAlert --}}
-            window.addEventListener('do-safe-finish-exam', () => {
-                this.safeFinishExam();
-            });
+            {{-- Recovery: sync jawaban dari localStorage yang belum sampai server --}}
+            this.recoverFromLocalStorage();
+
+            {{-- Cleanup: hapus localStorage tryout lama agar tidak menumpuk --}}
+            this.lsCleanupOld();
         },
 
+        // ============================
+        // === localStorage Layer ===
+        // ============================
+        lsGet() {
+            try { return JSON.parse(localStorage.getItem(this.storageKey) || '{}'); }
+            catch { return {}; }
+        },
+        lsSave(qId, aId, doubt) {
+            let data = this.lsGet();
+            data[qId] = { a: aId, d: doubt, s: false, t: Date.now() };
+            try { localStorage.setItem(this.storageKey, JSON.stringify(data)); } catch {}
+            this.refreshUnsyncedCount();
+        },
+        lsMarkSynced(qId) {
+            let data = this.lsGet();
+            if (data[qId]) { data[qId].s = true; }
+            try { localStorage.setItem(this.storageKey, JSON.stringify(data)); } catch {}
+            this.refreshUnsyncedCount();
+        },
+        lsGetUnsynced() {
+            let data = this.lsGet();
+            return Object.entries(data)
+                .filter(([_, v]) => !v.s && v.a !== null && v.a !== undefined)
+                .map(([qId, v]) => ({ questionId: parseInt(qId), answerId: parseInt(v.a), isDoubtful: !!v.d }));
+        },
+        lsClear() {
+            try { localStorage.removeItem(this.storageKey); } catch {}
+            this.unsyncedCount = 0;
+        },
+        refreshUnsyncedCount() {
+            this.unsyncedCount = this.lsGetUnsynced().length;
+        },
+        lsCleanupOld() {
+            {{-- Hapus data localStorage dari tryout lain (bukan tryout aktif ini) --}}
+            try {
+                for (let i = localStorage.length - 1; i >= 0; i--) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith('tryout_') && key !== this.storageKey) {
+                        localStorage.removeItem(key);
+                    }
+                }
+            } catch {}
+        },
+
+        // ============================
+        // === Network Helpers ===
+        // ============================
+        wireTimeout(promise, ms = 15000) {
+            return Promise.race([
+                promise,
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Request timeout')), ms))
+            ]);
+        },
+
+        async wireRetry(fn, maxRetries = 3) {
+            for (let i = 0; i <= maxRetries; i++) {
+                try {
+                    return await this.wireTimeout(fn());
+                } catch (e) {
+                    if (i < maxRetries) {
+                        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i)));
+                    } else {
+                        throw e;
+                    }
+                }
+            }
+        },
+
+        // ============================
+        // === Core Save Logic ===
+        // ============================
+        async saveWithBackup(questionId, answerId, isDoubtful, wireFn) {
+            {{-- Step 1: localStorage backup (instant, selalu berhasil) --}}
+            if (answerId) {
+                this.lsSave(questionId, answerId, isDoubtful);
+            }
+
+            {{-- Step 2: Coba kirim ke server --}}
+            try {
+                await this.wireTimeout(wireFn());
+                if (answerId) this.lsMarkSynced(questionId);
+                return true;
+            } catch (e) {
+                console.warn('[Tryout] Save gagal, backup di localStorage:', questionId, e.message);
+                return false;
+            }
+        },
+
+        // ============================
+        // === Recovery & Auto-Sync ===
+        // ============================
+        async recoverFromLocalStorage() {
+            const unsynced = this.lsGetUnsynced();
+            if (unsynced.length === 0) return;
+            try {
+                const results = await this.wireTimeout($wire.bulkSaveAnswers(unsynced));
+                for (const [qId, status] of Object.entries(results)) {
+                    if (status === 'ok') this.lsMarkSynced(parseInt(qId));
+                }
+            } catch (e) {
+                console.warn('[Tryout] Recovery sync gagal, akan retry nanti:', e.message);
+            }
+        },
+
+        async autoSync() {
+            if (!this.isOnline) return;
+            const unsynced = this.lsGetUnsynced();
+            if (unsynced.length === 0) return;
+            try {
+                const results = await this.wireTimeout($wire.bulkSaveAnswers(unsynced));
+                for (const [qId, status] of Object.entries(results)) {
+                    if (status === 'ok') this.lsMarkSynced(parseInt(qId));
+                }
+            } catch (e) {
+                console.warn('[Tryout] Auto-sync gagal:', e.message);
+            }
+        },
+
+        // ============================
+        // === UI Actions ===
+        // ============================
         syncLocalWithServer() {
             let qId = this.questionIds[this.currentIndex];
-            let data = this.savedAnswers[qId] || {};
-            this.localAnswerId = data.selected_id || null;
-            this.localIsDoubtful = data.is_doubtful || false;
+            let serverData = this.savedAnswers[qId] || {};
+            {{-- Cek localStorage: jika ada jawaban lokal yang belum sync, pakai itu --}}
+            let lsData = this.lsGet()[qId];
+            if (lsData && !lsData.s && lsData.a !== null && lsData.a !== undefined) {
+                this.localAnswerId = lsData.a;
+                this.localIsDoubtful = lsData.d || false;
+            } else {
+                this.localAnswerId = serverData.selected_id || null;
+                this.localIsDoubtful = serverData.is_doubtful || false;
+            }
         },
 
         getNavClass(index) {
             let qId = this.questionIds[index];
             let dbData = this.savedAnswers[qId];
             let baseClass = 'w-full h-10 rounded text-white font-semibold flex items-center justify-center text-sm hover:opacity-90 transition-all duration-150 ';
-            
+
             if (dbData?.is_doubtful) {
                 baseClass += 'bg-[#F9A825] '; {{-- Oranye (Ragu-ragu) --}}
             } else if (dbData?.answered) {
@@ -55,35 +216,42 @@
 
         async saveToDatabase() {
             this.isSaving = true;
-            this.pendingSaves++;
-            try {
-                await $wire.saveAnswer(this.localAnswerId, this.localIsDoubtful);
-            } catch (e) {
-                console.error('Gagal menyimpan:', e);
-            } finally {
-                this.pendingSaves--;
-                this.isSaving = false;
-            }
+            const qId = this.questionIds[this.currentIndex];
+            await this.saveWithBackup(
+                qId, this.localAnswerId, this.localIsDoubtful,
+                () => $wire.saveAnswer(this.localAnswerId, this.localIsDoubtful)
+            );
+            this.isSaving = false;
         },
 
         async saveAndNext() {
             this.isLoading = true;
-            this.pendingSaves++;
-            try {
-                await $wire.saveAnswerAndNext(this.localAnswerId, this.localIsDoubtful);
-            } catch (e) {
-                console.error('Gagal simpan & lanjut:', e);
-            } finally {
-                this.pendingSaves--;
-                this.scrollToTop();
-                this.isLoading = false;
+            const qId = this.questionIds[this.currentIndex];
+            const success = await this.saveWithBackup(
+                qId, this.localAnswerId, this.localIsDoubtful,
+                () => $wire.saveAnswerAndNext(this.localAnswerId, this.localIsDoubtful)
+            );
+
+            if (!success) {
+                {{-- Server gagal, tapi localStorage sudah aman. Pindah soal secara lokal. --}}
+                if (this.currentIndex < this.questionIds.length - 1) {
+                    this.currentIndex++;
+                }
             }
+
+            this.scrollToTop();
+            this.isLoading = false;
         },
 
         async prev() {
             if (this.currentIndex > 0) {
                 this.isLoading = true;
-                await $wire.goToQuestion(this.currentIndex - 1);
+                try {
+                    await this.wireTimeout($wire.goToQuestion(this.currentIndex - 1));
+                } catch (e) {
+                    {{-- Fallback: pindah secara lokal --}}
+                    this.currentIndex--;
+                }
                 this.scrollToTop();
                 this.isLoading = false;
             }
@@ -91,7 +259,12 @@
 
         async goTo(index) {
             this.isLoading = true;
-            await $wire.goToQuestion(index);
+            try {
+                await this.wireTimeout($wire.goToQuestion(index));
+            } catch (e) {
+                {{-- Fallback: pindah secara lokal --}}
+                this.currentIndex = index;
+            }
             if (window.innerWidth < 768) this.showSidebar = false;
             this.scrollToTop();
             this.isLoading = false;
@@ -99,10 +272,12 @@
 
         scrollToTop() {
             let el = document.getElementById('question-scroll-viewport');
-            if(el) el.scrollTop = 0;
+            if (el) el.scrollTop = 0;
         },
 
-        {{-- [BUG FIX] Timer: simpan jawaban aktif + tunggu semua save selesai sebelum finishExam --}}
+        // ============================
+        // === Timer & Finish ===
+        // ============================
         initializeTimer() {
             let remainingSeconds = @js($remainingSeconds);
             const timerEl = document.getElementById('timer');
@@ -113,11 +288,11 @@
                 return;
             }
 
-            const startTime = performance.now();
+            {{-- Deadline absolut: jam sekarang + sisa waktu dari server --}}
+            const deadline = Date.now() + (remainingSeconds * 1000);
 
-            const timerInterval = setInterval(() => {
-                const elapsedSeconds = Math.floor((performance.now() - startTime) / 1000);
-                const currentRemaining = remainingSeconds - elapsedSeconds;
+            const updateTimer = () => {
+                const currentRemaining = Math.floor((deadline - Date.now()) / 1000);
 
                 if (currentRemaining > 0) {
                     const m = Math.floor(currentRemaining / 60);
@@ -134,43 +309,95 @@
                     timerEl.textContent = '00:00';
                     this.safeFinishExam();
                 }
-            }, 1000);
+            };
+
+            const timerInterval = setInterval(updateTimer, 1000);
+
+            {{-- Visibility API: saat HP dibuka / tab aktif kembali, langsung koreksi timer --}}
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) updateTimer();
+            });
         },
 
-        {{-- [BUG FIX] Simpan jawaban aktif & tunggu semua in-flight saves selesai, BARU finish --}}
         async safeFinishExam() {
-            {{-- Step 1: Simpan jawaban soal yang sedang dibuka jika belum tersimpan --}}
-            const currentQId = this.questionIds[this.currentIndex];
-            const alreadySaved = this.savedAnswers[currentQId];
-            const currentSelectedId = this.localAnswerId;
+            {{-- Guard: cegah eksekusi ganda (timer + manual klik bersamaan) --}}
+            if (this.isFinishing) return;
+            this.isFinishing = true;
 
-            if (currentSelectedId && (!alreadySaved || alreadySaved.selected_id != currentSelectedId)) {
-                this.pendingSaves++;
-                try {
-                    await $wire.saveAnswer(currentSelectedId, this.localIsDoubtful);
-                } catch(e) {
-                    console.error('Gagal simpan jawaban terakhir:', e);
-                } finally {
-                    this.pendingSaves--;
+            {{-- Step 1: Backup jawaban soal yang sedang dibuka ke localStorage --}}
+            const currentQId = this.questionIds[this.currentIndex];
+            if (this.localAnswerId) {
+                this.lsSave(currentQId, this.localAnswerId, this.localIsDoubtful);
+            }
+
+            {{-- Step 2: Sync SEMUA jawaban yang belum tersimpan (retry 3x) --}}
+            const unsynced = this.lsGetUnsynced();
+            if (unsynced.length > 0) {
+                let allSynced = false;
+                for (let attempt = 0; attempt < 3; attempt++) {
+                    try {
+                        const results = await this.wireTimeout($wire.bulkSaveAnswers(unsynced), 30000);
+                        for (const [qId, status] of Object.entries(results)) {
+                            if (status === 'ok') this.lsMarkSynced(parseInt(qId));
+                        }
+                        if (this.lsGetUnsynced().length === 0) {
+                            allSynced = true;
+                            break;
+                        }
+                    } catch (e) {
+                        if (attempt < 2) {
+                            await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
+                        }
+                    }
+                }
+
+                {{-- Masih ada yang gagal setelah 3 percobaan --}}
+                if (!allSynced && this.lsGetUnsynced().length > 0) {
+                    const remaining = this.lsGetUnsynced().length;
+                    this.isFinishing = false; {{-- Reset agar tombol Coba Lagi bisa jalan --}}
+                    Swal.fire({
+                        title: 'Gagal Menyimpan Jawaban',
+                        html: `<b>${remaining} jawaban</b> belum berhasil tersimpan ke server.<br>Pastikan koneksi internet stabil dan coba lagi.`,
+                        icon: 'error',
+                        confirmButtonText: 'Coba Lagi',
+                        showCancelButton: true,
+                        cancelButtonText: 'Kumpulkan Apa Adanya',
+                        confirmButtonColor: '#2563EA',
+                        cancelButtonColor: '#dc2626',
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            this.safeFinishExam();
+                        } else if (result.dismiss === Swal.DismissReason.cancel) {
+                            this.doFinishExam();
+                        }
+                    });
+                    return;
                 }
             }
 
-            {{-- Step 2: Tunggu semua request simpan lain yang masih in-flight selesai --}}
-            const waitForPendingSaves = () => new Promise(resolve => {
-                const check = () => {
-                    if (this.pendingSaves <= 0) {
-                        resolve();
-                    } else {
-                        setTimeout(check, 200);
+            {{-- Step 3: Semua tersimpan, kumpulkan ujian --}}
+            await this.doFinishExam();
+        },
+
+        async doFinishExam() {
+            try {
+                await this.wireRetry(() => $wire.finishExam(), 3);
+                this.lsClear();
+            } catch (e) {
+                Swal.fire({
+                    title: 'Gagal Mengumpulkan',
+                    text: 'Tidak dapat menghubungi server. Periksa koneksi internet dan coba lagi.',
+                    icon: 'error',
+                    confirmButtonText: 'Coba Lagi',
+                    confirmButtonColor: '#2563EA',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        this.doFinishExam();
                     }
-                };
-                check();
-            });
-
-            await waitForPendingSaves();
-
-            {{-- Step 3: Baru panggil finishExam --}}
-            $wire.finishExam();
+                });
+            }
         }
     }"
 >
@@ -184,6 +411,20 @@
             --:--
         </div>
     </header>
+
+    {{-- STATUS BANNER: Koneksi / Sinkronisasi --}}
+    <div x-show="!isOnline || unsyncedCount > 0"
+         x-transition.duration.300ms
+         style="display: none;"
+         class="flex-shrink-0 px-4 py-2 text-sm font-medium flex items-center justify-center gap-2"
+         :class="!isOnline ? 'bg-red-600 text-white' : 'bg-yellow-500 text-yellow-900'">
+        <template x-if="!isOnline">
+            <span><i class="fas fa-exclamation-triangle mr-1"></i> Koneksi terputus — jawaban tersimpan di perangkat, akan disinkronkan otomatis</span>
+        </template>
+        <template x-if="isOnline && unsyncedCount > 0">
+            <span><i class="fas fa-sync-alt fa-spin mr-1"></i> <span x-text="unsyncedCount"></span> jawaban sedang disinkronkan...</span>
+        </template>
+    </div>
 
     <div class="flex flex-1 overflow-hidden relative">
         {{-- Overlay Mobile --}}
@@ -311,7 +552,7 @@
                                 md:static md:w-auto md:bg-transparent md:border-none md:shadow-none md:p-0 md:mt-8 md:justify-start md:gap-3">
 
                         <button @click="prev()"
-                                :disabled="currentIndex === 0"
+                                :disabled="currentIndex === 0 || isLoading || isSaving || isFinishing"
                                 class="flex-1 md:flex-none md:w-auto bg-[#2563EA] text-white font-semibold px-2 py-2 md:px-4 rounded-lg shadow-md h-10 md:order-1
                                     flex items-center justify-center gap-1 text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed">
                             Sebelumnya
@@ -326,19 +567,21 @@
                             </label>
                         </div>
 
-                        @if($currentIndex < $totalQuestions - 1)
-                            <button @click="saveAndNext()"
-                                    class="flex-1 md:flex-none md:w-auto bg-[#2563EA] hover:bg-[#1a47b3] text-white font-semibold px-2 py-2 md:px-4 rounded-lg shadow-md h-10 md:order-3
-                                            flex items-center justify-center gap-1 text-sm md:text-base">
-                                Simpan & Lanjutkan
-                            </button>
-                        @else
-                            <button @click="await saveToDatabase(); $dispatch('show-finish-alert')"
-                                    class="flex-1 md:flex-none md:w-auto bg-[#EF4444] hover:bg-[#B91C1C] text-white font-semibold px-2 py-2 md:px-4 rounded-lg shadow-md h-10 md:order-3
-                                            flex items-center justify-center gap-1 text-sm md:text-base">
-                                Simpan & Kumpulkan
-                            </button>
-                        @endif
+                        {{-- Pakai x-show Alpine (bukan @if Blade) agar tombol reaktif saat pindah soal secara lokal/offline --}}
+                        <button x-show="currentIndex < questionIds.length - 1"
+                                @click="saveAndNext()"
+                                :disabled="isLoading || isSaving || isFinishing"
+                                class="flex-1 md:flex-none md:w-auto bg-[#2563EA] hover:bg-[#1a47b3] text-white font-semibold px-2 py-2 md:px-4 rounded-lg shadow-md h-10 md:order-3
+                                        flex items-center justify-center gap-1 text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed">
+                            Simpan & Lanjutkan
+                        </button>
+                        <button x-show="currentIndex >= questionIds.length - 1"
+                                @click="await saveToDatabase(); $dispatch('show-finish-alert')"
+                                :disabled="isLoading || isSaving || isFinishing"
+                                class="flex-1 md:flex-none md:w-auto bg-[#EF4444] hover:bg-[#B91C1C] text-white font-semibold px-2 py-2 md:px-4 rounded-lg shadow-md h-10 md:order-3
+                                        flex items-center justify-center gap-1 text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed">
+                            Simpan & Kumpulkan
+                        </button>
                     </div>
                 </div> 
             </div>
@@ -424,7 +667,7 @@
 @endpush
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+{{-- SweetAlert sudah di-load di layout blank.blade.php, JANGAN load ulang --}}
 <script>
     window.addEventListener('show-finish-alert', (e) => {
         Swal.fire({

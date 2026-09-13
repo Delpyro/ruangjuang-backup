@@ -56,8 +56,10 @@ class TryoutResultPage extends Component
                                      ->exists();
 
         // 4. Muat soal (dibutuhkan untuk kalkulasi)
-        $this->allTryoutQuestions = $this->tryout->activeQuestions()
-                                             ->with('category')
+        // [BUG FIX] Pakai questions() biasa (termasuk inactive) agar soal yang
+        // dinonaktifkan admin SETELAH user ujian tetap dihitung skornya (tidak hilang/drop)
+        $this->allTryoutQuestions = $this->tryout->questions()
+                                             ->with(['category', 'subCategory.category'])
                                              ->get();
 
         // 5. Logika Gated (Terkunci)
@@ -145,8 +147,14 @@ class TryoutResultPage extends Component
 
         // 3. Inisialisasi Kategori
         foreach ($allTryoutQuestions as $question) {
-            $categoryId = $question->category->id ?? 0;
-            $categoryName = $question->category->name ?? 'Tanpa Kategori';
+            // [BUG FIX] Prioritaskan kategori dari subCategory. 
+            // Mengatasi kasus salah input kategori di CMS di mana soal masuk ke kategori lain.
+            $cat = ($question->subCategory && $question->subCategory->category) 
+                    ? $question->subCategory->category 
+                    : $question->category;
+                    
+            $categoryId = $cat->id ?? 0;
+            $categoryName = $cat->name ?? 'Tanpa Kategori';
             
             if (!isset($categorySummary[$categoryId])) {
                 $categorySummary[$categoryId] = [
@@ -164,7 +172,11 @@ class TryoutResultPage extends Component
 
         // 4. Proses Jawaban
         foreach ($allTryoutQuestions as $question) {
-            $categoryId = $question->category->id ?? 0;
+            $cat = ($question->subCategory && $question->subCategory->category) 
+                    ? $question->subCategory->category 
+                    : $question->category;
+            $categoryId = $cat->id ?? 0;
+            
             $userAnswer = $userAnswers->get($question->id); 
 
             if ($userAnswer && $userAnswer->answer_id) {
