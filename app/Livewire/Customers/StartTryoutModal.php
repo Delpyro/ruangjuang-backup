@@ -72,7 +72,7 @@ class StartTryoutModal extends Component
     {
         try {
             DB::transaction(function () {
-                $userTryout = UserTryout::where('user_id', auth()->id())
+                $userTryout = UserTryout::where('id_user', auth()->id())
                     ->where('tryout_id', $this->tryout->id)
                     ->first();
 
@@ -135,7 +135,7 @@ class StartTryoutModal extends Component
     private function autoCompleteTryout()
     {
         try {
-            $userTryout = UserTryout::where('user_id', auth()->id())
+            $userTryout = UserTryout::where('id_user', auth()->id())
                 ->where('tryout_id', $this->tryout->id)
                 ->first();
 

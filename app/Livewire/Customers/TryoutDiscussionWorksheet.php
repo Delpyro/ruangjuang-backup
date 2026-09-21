@@ -114,9 +114,13 @@ class TryoutDiscussionWorksheet extends Component
     private function getQuestionAnswerHistory($questionId, $userAnswersGrouped) {
         $answers = $userAnswersGrouped->get($questionId);
         if (!$answers) return [];
+        // [BUG FIX #7] Kolom 'attempt_number' tidak ada di tabel users_answers.
+        // Semua jawaban pada pembahasan berasal dari satu sesi (UserTryout) yang sama,
+        // jadi attempt_number diambil dari $this->userTryout->attempt.
+        $attemptNumber = $this->userTryout->attempt ?? 1;
         return $answers->map(fn($ans) => [
-            'answer_id' => $ans->answer_id,
-            'attempt_number' => $ans->attempt_number ?? 1,
+            'answer_id'      => $ans->answer_id,
+            'attempt_number' => $attemptNumber,
         ])->toArray();
     }
 

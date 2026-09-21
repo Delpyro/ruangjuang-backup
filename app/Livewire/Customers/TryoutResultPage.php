@@ -181,9 +181,17 @@ class TryoutResultPage extends Component
 
             if ($userAnswer && $userAnswer->answer_id) {
                 // --- KASUS 1: DIJAWAB ---
+                // [BUG FIX #6] Gunakan score tersimpan di DB sebagai sumber kebenaran tunggal.
+                // Ini konsisten dengan TryoutWorksheet yang menyimpan points dari tabel answers.
+                // Fallback ke answer->points hanya untuk data lama yang score-nya belum terisi.
                 $selectedAnswerModel = $userAnswer->answer;
-                $pointsEarned = $userAnswer->score ?? ($selectedAnswerModel ? $selectedAnswerModel->points : 0);
-                $isCorrect = $selectedAnswerModel ? $selectedAnswerModel->is_correct : false;
+                $pointsEarned = ($userAnswer->score !== null)
+                    ? (float) $userAnswer->score
+                    : ($selectedAnswerModel ? (float) $selectedAnswerModel->points : 0);
+
+                // Deteksi benar/salah dari nilai skor (>0 = benar, <=0 = salah)
+                // agar konsisten dengan semua komponen tanpa bergantung pada is_correct di tabel answers.
+                $isCorrect = $pointsEarned > 0;
 
                 if ($isCorrect) {
                     $correctCount++;

@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 use Illuminate\Database\Eloquent\Collection;
 
-// class TryoutDiscussionWorksheet extends Component
+class TryoutDiscussionPage extends Component
 {
     public Tryout $tryout;
     public ?UserTryout $userTryout = null;

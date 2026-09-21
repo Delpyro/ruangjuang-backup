@@ -144,7 +144,10 @@
                             @php
                                 $progress = $tryout->user_progress;
                                 // Perbaikan: Gunakan isset($progress) untuk cek apakah progress ada
-                                $allCompleted = isset($progress) && $tryout->last_completed_id && ($progress->is_completed ?? true) && ($progress->attempt >= $tryout->max_attempt);
+                                // [BUG FIX #12] max_attempt tidak ada di schema.
+                                // Gunakan next_available_attempt === null (sudah dihitung di sub-query render())
+                                // yang artinya tidak ada attempt tersisa = semua selesai.
+                                $allCompleted = isset($progress) && $tryout->last_completed_id && $tryout->next_available_attempt === null;
                                 
                                 // Variabel penolong untuk status utama
                                 $currentAttempt = $progress->attempt ?? 1;
@@ -198,7 +201,8 @@
                                             <span class="font-semibold">Tanggal Pembelian:</span>
                                         </div>
                                         <div class="text-green-600 mt-1">
-                                            {{ $progress->purchased_at->translatedFormat('d F Y') ?? 'Belum ada tanggal' }}
+                                            {{-- [BUG FIX #11] Nullsafe operator agar tidak crash jika purchased_at null --}}
+                                            {{ $progress?->purchased_at?->translatedFormat('d F Y') ?? 'Belum ada tanggal' }}
                                         </div>
                                     </div>
 

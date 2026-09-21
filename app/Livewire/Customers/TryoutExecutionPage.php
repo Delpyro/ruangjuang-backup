@@ -49,7 +49,7 @@ class TryoutExecutionPage extends Component
             // 2. Cek Status Sesi
             if ($userTryout->is_completed) {
                 // Jika sudah selesai, redirect ke halaman hasil
-                return $this->redirect(route('tryout.result', ['tryout' => $tryout->slug, 'attempt' => $attempt]));
+                return $this->redirect(route('tryout.my-results', $tryout->slug));
             }
             if (!$userTryout->started_at) {
                 // Jika belum dimulai (kemungkinan user bypass halaman konfirmasi)
@@ -189,7 +189,7 @@ class TryoutExecutionPage extends Component
     {
         if ($this->userTryout->is_completed) {
             session()->flash('info', 'Tryout sudah selesai sebelumnya.');
-            return $this->redirect(route('tryout.result', ['tryout' => $this->tryout->slug, 'attempt' => $this->userTryout->attempt]));
+            return $this->redirect(route('tryout.my-results', $this->tryout->slug));
         }
 
         try {
@@ -254,7 +254,7 @@ class TryoutExecutionPage extends Component
             // Hapus timer dari localStorage setelah berhasil submit
             $this->dispatch('remove-timer', ['key' => $this->timerKey]);
 
-            return $this->redirect(route('tryout.result', ['tryout' => $this->tryout->slug, 'attempt' => $this->userTryout->attempt]));
+            return $this->redirect(route('tryout.my-results', $this->tryout->slug));
 
         } catch (\Throwable $e) {
             \Log::error("Tryout Submission Failed for UserTryout ID {$this->userTryout->id}: " . $e->getMessage());

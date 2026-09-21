@@ -81,8 +81,12 @@
         lsGetUnsynced() {
             let data = this.lsGet();
             return Object.entries(data)
-                .filter(([_, v]) => !v.s && v.a !== null && v.a !== undefined)
-                .map(([qId, v]) => ({ questionId: parseInt(qId), answerId: parseInt(v.a), isDoubtful: !!v.d }));
+                .filter(([_, v]) => !v.s)  {{-- Sertakan juga entry dengan a=null (aksi hapus jawaban) --}}
+                .map(([qId, v]) => ({
+                    questionId: parseInt(qId),
+                    answerId: (v.a !== null && v.a !== undefined) ? parseInt(v.a) : null,
+                    isDoubtful: !!v.d
+                }));
         },
         lsClear() {
             try { localStorage.removeItem(this.storageKey); } catch {}
@@ -131,15 +135,14 @@
         // === Core Save Logic ===
         // ============================
         async saveWithBackup(questionId, answerId, isDoubtful, wireFn) {
-            {{-- Step 1: localStorage backup (instant, selalu berhasil) --}}
-            if (answerId) {
-                this.lsSave(questionId, answerId, isDoubtful);
-            }
+            {{-- Step 1: Selalu backup ke localStorage — termasuk answerId=null (hapus jawaban)
+                 Tanpa ini, aksi "hapus jawaban" hilang kalau server gagal. --}}
+            this.lsSave(questionId, answerId, isDoubtful);
 
             {{-- Step 2: Coba kirim ke server --}}
             try {
                 await this.wireTimeout(wireFn());
-                if (answerId) this.lsMarkSynced(questionId);
+                this.lsMarkSynced(questionId); {{-- Selalu mark synced, termasuk null --}}
                 return true;
             } catch (e) {
                 console.warn('[Tryout] Save gagal, backup di localStorage:', questionId, e.message);
@@ -233,10 +236,19 @@
             );
 
             if (!success) {
-                {{-- Server gagal, tapi localStorage sudah aman. Pindah soal secara lokal. --}}
-                if (this.currentIndex < this.questionIds.length - 1) {
-                    this.currentIndex++;
-                }
+                {{-- Server gagal: JANGAN pindah soal secara lokal!
+                     Tampilan soal dirender server — kalau pindah index tanpa re-render,
+                     user melihat soal lama tapi sistem mencatat soal baru → jawaban salah tempat.
+                     Jawaban sudah aman di localStorage, navigasi bisa dilanjut saat online. --}}
+                Swal.fire({
+                    title: 'Jawaban Tersimpan di Perangkat',
+                    text: 'Koneksi terputus. Jawaban sudah disimpan di perangkat dan akan dikirim otomatis saat koneksi pulih.',
+                    icon: 'info',
+                    confirmButtonText: 'Mengerti',
+                    confirmButtonColor: '#2563EA',
+                    timer: 3000,
+                    timerProgressBar: true,
+                });
             }
 
             this.scrollToTop();
@@ -249,8 +261,7 @@
                 try {
                     await this.wireTimeout($wire.goToQuestion(this.currentIndex - 1));
                 } catch (e) {
-                    {{-- Fallback: pindah secara lokal --}}
-                    this.currentIndex--;
+                    {{-- JANGAN fallback navigasi lokal — tampilan soal tidak akan update --}}
                 }
                 this.scrollToTop();
                 this.isLoading = false;
@@ -262,8 +273,7 @@
             try {
                 await this.wireTimeout($wire.goToQuestion(index));
             } catch (e) {
-                {{-- Fallback: pindah secara lokal --}}
-                this.currentIndex = index;
+                {{-- JANGAN fallback navigasi lokal — tampilan soal tidak akan update --}}
             }
             if (window.innerWidth < 768) this.showSidebar = false;
             this.scrollToTop();
@@ -412,19 +422,6 @@
         </div>
     </header>
 
-    {{-- STATUS BANNER: Koneksi / Sinkronisasi --}}
-    <div x-show="!isOnline || unsyncedCount > 0"
-         x-transition.duration.300ms
-         style="display: none;"
-         class="flex-shrink-0 px-4 py-2 text-sm font-medium flex items-center justify-center gap-2"
-         :class="!isOnline ? 'bg-red-600 text-white' : 'bg-yellow-500 text-yellow-900'">
-        <template x-if="!isOnline">
-            <span><i class="fas fa-exclamation-triangle mr-1"></i> Koneksi terputus — jawaban tersimpan di perangkat, akan disinkronkan otomatis</span>
-        </template>
-        <template x-if="isOnline && unsyncedCount > 0">
-            <span><i class="fas fa-sync-alt fa-spin mr-1"></i> <span x-text="unsyncedCount"></span> jawaban sedang disinkronkan...</span>
-        </template>
-    </div>
 
     <div class="flex flex-1 overflow-hidden relative">
         {{-- Overlay Mobile --}}
@@ -500,94 +497,107 @@
                     </span>
                 </div>  
 
-                {{-- Kategori --}}
-                <div class="bg-[#2563EA] text-white p-4 rounded-lg mb-4">
-                    <h4 class="font-bold text-lg uppercase">
-                        {{ $currentQuestion->subCategory->name ?? 'Kategori' }}
-                    </h4>
-                </div>
-
-                {{-- Wrapper Soal --}}
-                <div class="p-0 bg-gray-50 w-full">
-
-                    {{-- Teks Soal --}}
-                    <div class="mb-6 text-gray-800 text-base md:text-lg tinymce-content">
-                        <span class="float-left mr-2 font-bold">{{ $currentIndex + 1 }}.</span>
-                        <div class="overflow-x-auto">
-                            {!! $currentQuestion->question !!}
-                        </div>
+                {{-- [BUG FIX #8] Guard null: jika soal tidak tersedia (cache miss / tryout kosong) --}}
+                @if($currentQuestion)
+                    {{-- Kategori --}}
+                    <div class="bg-[#2563EA] text-white p-4 rounded-lg mb-4">
+                        <h4 class="font-bold text-lg uppercase">
+                            {{ $currentQuestion->subCategory->name ?? 'Kategori' }}
+                        </h4>
                     </div>
 
-                    {{-- Gambar Soal --}}
-                    @if($currentQuestion->image)
-                        <div class="my-4 p-2 border rounded-md bg-white shadow-sm">
-                            <img src="{{ asset('storage/' . $currentQuestion->image) }}" class="max-w-full h-auto rounded-md mx-auto">
+                    {{-- Wrapper Soal --}}
+                    <div class="p-0 bg-gray-50 w-full">
+
+                        {{-- Teks Soal --}}
+                        <div class="mb-6 text-gray-800 text-base md:text-lg tinymce-content">
+                            <span class="float-left mr-2 font-bold">{{ $currentIndex + 1 }}.</span>
+                            <div class="overflow-x-auto">
+                                {!! $currentQuestion->question !!}
+                            </div>
                         </div>
-                    @endif
 
-                    {{-- Pilihan Jawaban --}}
-                    <div class="space-y-2 text-gray-700">
-                        @foreach($currentQuestion->answers as $ans)
-                            <label class="group flex items-start space-x-3 cursor-pointer p-3 rounded-lg border border-transparent hover:bg-gray-100 transition-colors duration-150 w-full"
-                                :class="localAnswerId == {{ $ans->id }} ? 'border-[#2563EA] bg-blue-50' : ''">
-                                
-                                <input type="radio"
-                                    name="jawaban"
-                                    value="{{ $ans->id }}"
-                                    x-model="localAnswerId"
-                                    class="radio-custom-blue flex-shrink-0 mt-1">
+                        {{-- Gambar Soal --}}
+                        @if($currentQuestion->image)
+                            <div class="my-4 p-2 border rounded-md bg-white shadow-sm">
+                                <img src="{{ asset('storage/' . $currentQuestion->image) }}" class="max-w-full h-auto rounded-md mx-auto">
+                            </div>
+                        @endif
 
-                                <div class="flex-1 min-w-0 text-base md:text-lg text-gray-800 tinymce-content">
-                                    <div class="prose max-w-none break-words">
-                                        {!! $ans->answer !!}
+                        {{-- Pilihan Jawaban --}}
+                        <div class="space-y-2 text-gray-700">
+                            @foreach($currentQuestion->answers as $ans)
+                                <label class="group flex items-start space-x-3 cursor-pointer p-3 rounded-lg border border-transparent hover:bg-gray-100 transition-colors duration-150 w-full"
+                                    :class="localAnswerId == {{ $ans->id }} ? 'border-[#2563EA] bg-blue-50' : ''">
+                                    
+                                    <input type="radio"
+                                        name="jawaban"
+                                        value="{{ $ans->id }}"
+                                        x-model="localAnswerId"
+                                        class="radio-custom-blue flex-shrink-0 mt-1">
+
+                                    <div class="flex-1 min-w-0 text-base md:text-lg text-gray-800 tinymce-content">
+                                        <div class="prose max-w-none break-words">
+                                            {!! $ans->answer !!}
+                                        </div>
                                     </div>
-                                </div>
-                            </label>
-                        @endforeach
-                    </div>
-
-                    {{-- TOMBOL NAVIGASI --}}
-                    <div class="fixed bottom-0 left-0 right-0 w-full bg-white border-t border-gray-200 p-3 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]
-                                flex items-center justify-between gap-2
-                                md:static md:w-auto md:bg-transparent md:border-none md:shadow-none md:p-0 md:mt-8 md:justify-start md:gap-3">
-
-                        <button @click="prev()"
-                                :disabled="currentIndex === 0 || isLoading || isSaving || isFinishing"
-                                class="flex-1 md:flex-none md:w-auto bg-[#2563EA] text-white font-semibold px-2 py-2 md:px-4 rounded-lg shadow-md h-10 md:order-1
-                                    flex items-center justify-center gap-1 text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed">
-                            Sebelumnya
-                        </button>
-
-                        <div class="flex-none md:w-auto flex justify-center md:justify-start md:order-2">
-                            <label class="flex flex-col md:flex-row items-center gap-1 md:gap-2 cursor-pointer px-1">
-                                <input type="checkbox"
-                                    x-model="localIsDoubtful"
-                                    class="checkbox-ragu-ragu">
-                                <span class="text-gray-700 font-medium text-[10px] md:text-sm">Ragu-ragu</span>
-                            </label>
+                                </label>
+                            @endforeach
                         </div>
 
-                        {{-- Pakai x-show Alpine (bukan @if Blade) agar tombol reaktif saat pindah soal secara lokal/offline --}}
-                        <button x-show="currentIndex < questionIds.length - 1"
-                                @click="saveAndNext()"
-                                :disabled="isLoading || isSaving || isFinishing"
-                                class="flex-1 md:flex-none md:w-auto bg-[#2563EA] hover:bg-[#1a47b3] text-white font-semibold px-2 py-2 md:px-4 rounded-lg shadow-md h-10 md:order-3
+                        {{-- TOMBOL NAVIGASI --}}
+                        <div class="fixed bottom-0 left-0 right-0 w-full bg-white border-t border-gray-200 p-3 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]
+                                    flex items-center justify-between gap-2
+                                    md:static md:w-auto md:bg-transparent md:border-none md:shadow-none md:p-0 md:mt-8 md:justify-start md:gap-3">
+
+                            <button @click="prev()"
+                                    :disabled="currentIndex === 0 || isLoading || isSaving || isFinishing"
+                                    class="flex-1 md:flex-none md:w-auto bg-[#2563EA] text-white font-semibold px-2 py-2 md:px-4 rounded-lg shadow-md h-10 md:order-1
                                         flex items-center justify-center gap-1 text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed">
-                            Simpan & Lanjutkan
-                        </button>
-                        <button x-show="currentIndex >= questionIds.length - 1"
-                                @click="await saveToDatabase(); $dispatch('show-finish-alert')"
-                                :disabled="isLoading || isSaving || isFinishing"
-                                class="flex-1 md:flex-none md:w-auto bg-[#EF4444] hover:bg-[#B91C1C] text-white font-semibold px-2 py-2 md:px-4 rounded-lg shadow-md h-10 md:order-3
-                                        flex items-center justify-center gap-1 text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed">
-                            Simpan & Kumpulkan
-                        </button>
+                                Sebelumnya
+                            </button>
+
+                            <div class="flex-none md:w-auto flex justify-center md:justify-start md:order-2">
+                                <label class="flex flex-col md:flex-row items-center gap-1 md:gap-2 cursor-pointer px-1">
+                                    <input type="checkbox"
+                                        x-model="localIsDoubtful"
+                                        class="checkbox-ragu-ragu">
+                                    <span class="text-gray-700 font-medium text-[10px] md:text-sm">Ragu-ragu</span>
+                                </label>
+                            </div>
+
+                            {{-- Pakai x-show Alpine (bukan @if Blade) agar tombol reaktif saat pindah soal secara lokal/offline --}}
+                            <button x-show="currentIndex < questionIds.length - 1"
+                                    @click="saveAndNext()"
+                                    :disabled="isLoading || isSaving || isFinishing"
+                                    class="flex-1 md:flex-none md:w-auto bg-[#2563EA] hover:bg-[#1a47b3] text-white font-semibold px-2 py-2 md:px-4 rounded-lg shadow-md h-10 md:order-3
+                                            flex items-center justify-center gap-1 text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed">
+                                Simpan & Lanjutkan
+                            </button>
+                            <button x-show="currentIndex >= questionIds.length - 1"
+                                    @click="await saveToDatabase(); $dispatch('show-finish-alert')"
+                                    :disabled="isLoading || isSaving || isFinishing"
+                                    class="flex-1 md:flex-none md:w-auto bg-[#EF4444] hover:bg-[#B91C1C] text-white font-semibold px-2 py-2 md:px-4 rounded-lg shadow-md h-10 md:order-3
+                                            flex items-center justify-center gap-1 text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed">
+                                Simpan & Kumpulkan
+                            </button>
+                        </div>
                     </div>
-                </div> 
-            </div>
-        </div>
-    </div>
-</div>
+                @else
+                    {{-- Fallback jika soal tidak tersedia --}}
+                    <div class="flex flex-col items-center justify-center py-16 text-center">
+                        <svg class="w-16 h-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <p class="text-gray-500 font-medium text-lg">Soal tidak tersedia</p>
+                        <p class="text-gray-400 text-sm mt-1">Silakan coba muat ulang halaman.</p>
+                    </div>
+                @endif
+
+            </div>{{-- End: #question-scroll-viewport --}}
+        </div>{{-- End: flex-1 middle content area --}}
+    </div>{{-- End: flex row (sidebar + content) --}}
+</div>{{-- End: root x-data div --}}
 
 @push('styles')
 <style>

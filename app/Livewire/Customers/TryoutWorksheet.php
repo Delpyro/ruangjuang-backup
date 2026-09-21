@@ -50,6 +50,12 @@ class TryoutWorksheet extends Component
             return $this->redirect(route('tryout.my-tryouts'), navigate: true);
         }
 
+        // [BUG FIX #14] Proteksi ended_at null: terjadi jika user bypass URL ke /start/{attempt}
+        // sebelum tombol "Mulai" diklik (started_at & ended_at masih null).
+        if (!$userTryout->ended_at) {
+            return $this->redirect(route('tryout.my-tryouts'), navigate: true);
+        }
+
         // Proteksi Waktu
         if (Carbon::now()->isAfter($userTryout->ended_at)) {
             $this->forceFinishExam($userTryout);
@@ -225,10 +231,13 @@ class TryoutWorksheet extends Component
     private function forceFinishExam(UserTryout $userTryout)
     {
         DB::transaction(function () use ($userTryout) {
-            $userTryout->update([
-                'is_completed' => true,
-                'ended_at'     => Carbon::now(),
-            ]);
+            // [BUG FIX #4] Jangan overwrite ended_at jika sudah terisi
+            // agar waktu pengerjaan yang tercatat akurat sesuai deadline aslinya.
+            $updateData = ['is_completed' => true];
+            if (!$userTryout->ended_at) {
+                $updateData['ended_at'] = Carbon::now();
+            }
+            $userTryout->update($updateData);
 
             if ($userTryout->attempt == 1) {
                 $savedAnswers = UserAnswer::where('user_tryout_id', $userTryout->id)->get();
@@ -240,31 +249,43 @@ class TryoutWorksheet extends Component
                     ['score'   => $totalScore]
                 );
 
-                // 2. [FIX 2] Kalkulasi Rapor per Kategori — kumpulkan semua record dulu,
-                //    lalu simpan sekaligus dengan upsert() → 1 query, bukan N query!
+                // 2. Kalkulasi Rapor per Kategori
                 $answersByQuestion = $savedAnswers->keyBy('question_id');
-                // [BUG FIX] Ambil juga subCategory untuk fixing mapping kategori
+                // Ambil juga subCategory untuk fixing mapping kategori
                 $questions = $this->tryout->questions()->with('subCategory')->get(['id', 'id_question_categories', 'id_question_sub_category']);
 
-                // Hitung summary per kategori
+                // [BUG FIX #5] Hitung summary per kategori lengkap dengan benar/salah/kosong
                 $summary = [];
                 foreach ($questions as $q) {
-                    // [BUG FIX] Prioritaskan category dari subCategory jika ada
                     $catId = $q->subCategory->question_category_id ?? $q->id_question_categories ?? 0;
                     $ans   = $answersByQuestion->get($q->id);
 
                     if (!isset($summary[$catId])) {
-                        $summary[$catId] = ['score' => 0, 'total' => 0];
+                        $summary[$catId] = [
+                            'score'   => 0,
+                            'total'   => 0,
+                            'correct' => 0,
+                            'wrong'   => 0,
+                            'unanswered' => 0,
+                        ];
                     }
 
                     $summary[$catId]['total']++;
 
                     if ($ans && $ans->answer_id) {
                         $summary[$catId]['score'] += $ans->score;
+                        // Skor > 0 berarti jawaban benar, <= 0 berarti salah
+                        if ($ans->score > 0) {
+                            $summary[$catId]['correct']++;
+                        } else {
+                            $summary[$catId]['wrong']++;
+                        }
+                    } else {
+                        $summary[$catId]['unanswered']++;
                     }
                 }
 
-                // [FIX 2] Siapkan array records lalu 1x upsert — jauh lebih ringan dari loop updateOrCreate
+                // Siapkan array records lalu 1x upsert
                 $now     = Carbon::now();
                 $records = [];
                 foreach ($summary as $catId => $stat) {
@@ -273,6 +294,9 @@ class TryoutWorksheet extends Component
                         'question_category_id' => $catId,
                         'score'                => $stat['score'],
                         'total_questions'      => $stat['total'],
+                        'correct_count'        => $stat['correct'],
+                        'wrong_count'          => $stat['wrong'],
+                        'unanswered_count'     => $stat['unanswered'],
                         'created_at'           => $now,
                         'updated_at'           => $now,
                     ];
@@ -282,7 +306,7 @@ class TryoutWorksheet extends Component
                     TryoutCategoryScore::upsert(
                         $records,
                         ['user_tryout_id', 'question_category_id'], // unique key
-                        ['score', 'total_questions', 'updated_at']  // kolom yang diupdate
+                        ['score', 'total_questions', 'correct_count', 'wrong_count', 'unanswered_count', 'updated_at']
                     );
                 }
             }
@@ -293,19 +317,13 @@ class TryoutWorksheet extends Component
      * Bulk save jawaban dari localStorage (recovery / sync).
      * Dipanggil oleh Alpine saat page load atau sebelum submit untuk mengirim
      * jawaban-jawaban yang gagal tersimpan sebelumnya.
+     *
+     * TIDAK boleh cek isWithinTimeLimit() karena method ini untuk RECOVERY
+     * jawaban yang dijawab SEBELUM deadline, hanya tertunda oleh masalah jaringan.
      */
     public function bulkSaveAnswers(array $answers): array
     {
         $results = [];
-
-        // Tolak bulk save jika sudah melewati deadline + grace period
-        if (!$this->isWithinTimeLimit()) {
-            foreach ($answers as $item) {
-                $results[(int) ($item['questionId'] ?? 0)] = 'expired';
-            }
-            return $results;
-        }
-
         $userId = Auth::id();
 
         DB::beginTransaction();
