@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <link rel="shortcut icon" href="{{ asset('images/logorj.ico') }}" type="image/x-icon">
     <title>Pembayaran Tryout</title>
     <script type="text/javascript" src="https://app.sandbox.midtrans.com/snap/snap.js" 
             data-client-key="{{ $clientKey }}"></script>

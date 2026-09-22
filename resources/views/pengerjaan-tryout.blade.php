@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="{{ asset('images/logorj.ico') }}" type="image/x-icon">
     <title>Try Out | Bahasa Indonesia</title>
     <!-- Asumsi @vite('resources/css/app.css') sudah memuat Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>

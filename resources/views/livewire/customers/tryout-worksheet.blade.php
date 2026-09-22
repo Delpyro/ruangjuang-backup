@@ -1,3 +1,4 @@
+<div>
 {{-- Data soal dari server — di script tag agar tidak merusak atribut HTML --}}
 <script>
     window.__CBT__ = {
@@ -10,7 +11,6 @@
 </script>
 
 <div class="flex flex-col h-screen"
-    wire:ignore
     x-cloak
     x-data="cbtApp()"
     x-init="init()"
@@ -405,7 +405,7 @@ function cbtApp() {
 
             // Keep-alive ping tiap 4 menit
             if (this._pingInterval) clearInterval(this._pingInterval);
-            this._pingInterval = setInterval(() => { try { $wire.ping(); } catch(e) {} }, 4 * 60 * 1000);
+            this._pingInterval = setInterval(() => { try { this.$wire.ping(); } catch(e) {} }, 4 * 60 * 1000);
         },
 
         // ============================
@@ -519,7 +519,7 @@ function cbtApp() {
 
             for (let attempt = 0; attempt < 3; attempt++) {
                 try {
-                    await $wire.finishExam();
+                    await this.$wire.finishExam();
                     try { localStorage.removeItem(`cbt_${this.userId}_${this.userTryoutId}`); } catch(e) {}
                     return;
                 } catch(e) {
@@ -603,7 +603,7 @@ function cbtApp() {
             }
 
             try {
-                await $wire.finishExam();
+                await this.$wire.finishExam();
                 try { localStorage.removeItem(`cbt_${this.userId}_${this.userTryoutId}`); } catch(e) {}
             } catch(e) {
                 Swal.fire({
@@ -641,11 +641,14 @@ function cbtApp() {
             this.dirtyIds.clear();
 
             try {
-                await $wire.autoSave(payload);
+                await this.$wire.autoSave(payload);
             } catch(e) {
                 payload.forEach(p => this.dirtyIds.add(p.questionId));
                 this.saveToLocalStorage();
                 console.warn('[CBT] Auto-save gagal, retry berikutnya.', e);
+                if (e && e.message && (e.message.includes('419') || e.message.includes('expired'))) {
+                    window.location.reload();
+                }
             } finally {
                 this.isFlushing = false;
             }
@@ -702,3 +705,5 @@ function cbtApp() {
 }
 </script>
 @endpush
+
+</div>
