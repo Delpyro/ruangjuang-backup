@@ -140,7 +140,86 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{tryout_slug}/payment', PaymentPage::class)->name('payment');
         Route::get('/{tryout:slug}/start/{attempt}', TryoutWorksheet::class)->name('start');
         Route::get('/{tryout:slug}/continue/{attempt}', TryoutWorksheet::class)->name('continue');
-        Route::get('/{tryout:slug}/results', TryoutResultPage::class)->name('my-results'); 
+        Route::get('/{tryout:slug}/results', TryoutResultPage::class)->name('my-results');
+
+    // =========================================================================
+    // Beacon auto-save: fire-and-forget saat beforeunload
+    // Browser tidak bisa await async, jadi pakai dedicated endpoint ini
+    // =========================================================================
+    Route::post('/cbt/beacon-save', function (\Illuminate\Http\Request $request) {
+        $data = $request->validate([
+            'userTryoutId'         => 'required|integer',
+            'payload'              => 'required|array|max:300',
+            'payload.*.questionId' => 'required|integer',
+            'payload.*.answerId'   => 'nullable|integer',
+            'payload.*.isDoubtful' => 'boolean',
+        ]);
+
+        $userTryoutId = (int) $data['userTryoutId'];
+        $userId       = auth()->id();
+
+        $userTryout = \App\Models\UserTryout::where('id', $userTryoutId)
+            ->where('id_user', $userId)
+            ->select('id', 'is_completed', 'tryout_id', 'ended_at')
+            ->first();
+
+        if (!$userTryout || $userTryout->is_completed) {
+            return response()->json(['ok' => false]);
+        }
+
+        // Whitelist: hanya soal aktif milik tryout ini (questions.id_tryout = FK langsung, bukan pivot)
+        $validIds = \DB::table('questions')
+            ->where('id_tryout', $userTryout->tryout_id)
+            ->where('is_active', true)
+            ->pluck('id')
+            ->flip()
+            ->all();
+
+        $answerIds = collect($data['payload'])
+            ->pluck('answerId')
+            ->filter(fn($id) => is_numeric($id) && $id > 0)
+            ->unique()->values()->all();
+
+        $answersData = empty($answerIds)
+            ? []
+            : \DB::table('answers')->whereIn('id', $answerIds)->get(['id', 'id_question', 'points'])->keyBy('id')->all();
+
+        $now     = now();
+        $records = collect($data['payload'])
+            ->filter(fn($item) => isset($validIds[(int)($item['questionId'] ?? 0)]))
+            ->map(function($item) use ($answersData, $userTryoutId, $userId, $now) {
+                $qId = (int) $item['questionId'];
+                $aId = (isset($item['answerId']) && is_numeric($item['answerId']) && $item['answerId'] > 0) ? (int)$item['answerId'] : null;
+                
+                // Pastikan answer_id ada dan benar-benar milik question_id ini
+                $ans = $aId && isset($answersData[$aId]) ? $answersData[$aId] : null;
+                $validAnswerId = ($ans && $ans->id_question == $qId) ? $ans->id : null;
+                $score = $validAnswerId ? (float) $ans->points : 0;
+                
+                return [
+                    'user_tryout_id' => $userTryoutId,
+                    'id_user'        => $userId,
+                    'question_id'    => $qId,
+                    'answer_id'      => $validAnswerId,
+                    'is_doubtful'    => (bool) ($item['isDoubtful'] ?? false),
+                    'score'          => $score,
+                    'created_at'     => $now,
+                    'updated_at'     => $now,
+                ];
+            })
+            ->values()->all();
+
+        if (!empty($records)) {
+            \App\Models\UserAnswer::upsert(
+                $records,
+                ['user_tryout_id', 'question_id'],
+                ['answer_id', 'is_doubtful', 'score', 'updated_at']
+            );
+        }
+
+        return response()->json(['ok' => true]);
+    })->name('cbt.beacon-save');
+ 
         Route::get('/{tryout:slug}/discussion', TryoutDiscussionWorksheet::class)->name('discussion');
     });
 

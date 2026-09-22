@@ -6,394 +6,281 @@ use App\Models\Tryout;
 use App\Models\UserTryout;
 use App\Models\UserAnswer;
 use App\Models\Ranking;
-use App\Models\Question;
 use App\Models\TryoutCategoryScore;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
+use Livewire\Attributes\Locked;
+use Livewire\Attributes\Renderless;
 use Livewire\Component;
-use Livewire\Attributes\Computed;
 use Carbon\Carbon;
 
 class TryoutWorksheet extends Component
 {
     public Tryout $tryout;
-    public $userTryout;
-    public $title;
-    
-    // âœ¨ BARU: Menyimpan sisa waktu dalam detik, bukan string ISO
-    public int $remainingSeconds = 0; 
 
-    // --- State Minimalis (Hanya ID & Index) ---
-    public array $questionIds = []; 
-    public int $currentIndex = 0;
-    public int $totalQuestions = 0;
+    #[Locked]
+    public int $userTryoutId;
 
-    // --- State untuk UI Sidebar (Sangat Ringan) ---
-    // Format: [question_id => ['answered' => true, 'is_doubtful' => false]]
-    public array $questionStatus = []; 
-    
-    public float $progressPercent = 0;
+    #[Locked]
+    public int $userId;
 
-    public function mount(Tryout $tryout, $attempt = 1)
+    public string $questionsJson = '[]';
+
+    /** Timestamp server saat mount (ms) - untuk koreksi clock skew */
+    public int $serverTimestamp = 0;
+    public string $endedAt = '';
+    public string $title = '';
+
+    // =========================================================================
+    // MOUNT
+    // =========================================================================
+
+    public function mount(Tryout $tryout, int $attempt = 1): void
     {
-        $this->tryout = $tryout;
-        $this->title = 'Pengerjaan: ' . $this->tryout->title;
+        $this->tryout  = $tryout;
+        $this->title   = $tryout->title;
+        $this->userId  = Auth::id();
 
-        $userTryout = UserTryout::where('id_user', Auth::id())
-            ->where('tryout_id', $this->tryout->id)
+        $userTryout = UserTryout::where('id_user', $this->userId)
+            ->where('tryout_id', $tryout->id)
             ->where('attempt', $attempt)
             ->first();
 
-        // Proteksi Akses
-        if (!$userTryout || $userTryout->is_completed) {
-            return $this->redirect(route('tryout.my-tryouts'), navigate: true);
+        if (!$userTryout || $userTryout->is_completed || !$userTryout->ended_at) {
+            $this->redirectRoute('tryout.my-tryouts', navigate: true);
+            return;
         }
 
-        // [BUG FIX #14] Proteksi ended_at null: terjadi jika user bypass URL ke /start/{attempt}
-        // sebelum tombol "Mulai" diklik (started_at & ended_at masih null).
-        if (!$userTryout->ended_at) {
-            return $this->redirect(route('tryout.my-tryouts'), navigate: true);
-        }
-
-        // Proteksi Waktu
         if (Carbon::now()->isAfter($userTryout->ended_at)) {
             $this->forceFinishExam($userTryout);
-            return $this->redirect(route('tryout.my-results', $this->tryout->slug), navigate: true);
+            $this->redirectRoute('tryout.my-results', [$tryout->slug], navigate: true);
+            return;
         }
 
-        $this->userTryout = $userTryout;
-        
-        // âœ¨ BARU: Hitung selisih waktu sekarang dengan waktu berakhir di server (dalam detik)
-        $sisaWaktu = Carbon::now()->diffInSeconds($userTryout->ended_at, false);
-        $this->remainingSeconds = $sisaWaktu > 0 ? (int) $sisaWaktu : 0;
+        $this->userTryoutId    = $userTryout->id;
+        $this->endedAt         = $userTryout->ended_at->toIso8601String();
+        $this->serverTimestamp = (int)(microtime(true) * 1000);
 
-        $this->initWorksheet();
-    }
-
-    /**
-     * Inisialisasi ID soal dan status jawaban.
-     */
-    private function initWorksheet()
-    {
-        // 1. Ambil hanya ID soal (Order sesuai urutan tryout)
-        $this->questionIds = $this->tryout->activeQuestions()
+        // Load SEMUA soal aktif — 1 query dengan eager load
+        $questions = $tryout->activeQuestions()
+            ->with([
+                'answers:id,id_question,answer,points',
+                'subCategory:id,name,question_category_id',
+            ])
             ->orderBy('id', 'asc')
-            ->pluck('id')
-            ->toArray();
+            ->get(['id', 'question', 'image', 'explanation', 'id_question_sub_category']);
 
-        $this->totalQuestions = count($this->questionIds);
+        // Load semua jawaban tersimpan — 1 query
+        $savedAnswers = UserAnswer::where('user_tryout_id', $userTryout->id)
+            ->get(['question_id', 'answer_id', 'is_doubtful'])
+            ->keyBy('question_id');
 
-        // 2. Ambil status jawaban untuk sidebar (Hanya ID dan flag)
-        $savedAnswers = UserAnswer::where('user_tryout_id', $this->userTryout->id)
-            ->get(['question_id', 'answer_id', 'is_doubtful']);
-
-        foreach ($savedAnswers as $ans) {
-            $this->questionStatus[$ans->question_id] = [
-                'answered' => !is_null($ans->answer_id),
-                'is_doubtful' => (bool)$ans->is_doubtful,
-                'selected_id' => $ans->answer_id
+        // Susun JSON untuk Alpine
+        $this->questionsJson = $questions->map(function ($q, $qIndex) use ($savedAnswers) {
+            $letters = ['A', 'B', 'C', 'D', 'E'];
+            return [
+                'id'           => $q->id,
+                'html'         => $q->question,
+                'image'        => $q->image ? asset('storage/' . $q->image) : null,
+                'subcategory'  => $q->subCategory?->name ?? 'Soal',
+                'answers'      => $q->answers->sortBy('id')->values()->map(function ($a, $i) use ($letters) {
+                    return [
+                        'id'     => $a->id,
+                        'html'   => $a->answer,
+                        'letter' => $letters[$i] ?? chr(65 + $i),
+                    ];
+                })->all(),
+                'savedAnswerId' => $savedAnswers->get($q->id)?->answer_id,
+                'savedDoubtful' => (bool) ($savedAnswers->get($q->id)?->is_doubtful ?? false),
             ];
-        }
-
-        $this->calculateProgress();
+        })->toJson();
     }
 
-    /**
-     * Lazy Loading: Mengambil detail soal secara dinamis.
-     * Menggunakan Cache agar perpindahan nomor soal instan (0ms).
-     */
-    #[Computed]
-    public function currentQuestion()
+    // =========================================================================
+    // AUTO-SAVE
+    // =========================================================================
+
+    #[Renderless]
+    public function autoSave(array $payload): bool
     {
-        $id = $this->questionIds[$this->currentIndex] ?? null;
-        if (!$id) return null;
-
-        // Cache soal selama 1 jam (karena isi soal jarang berubah saat ujian)
-        return Cache::remember("question_detail_{$id}", 3600, function () use ($id) {
-            return Question::with(['subCategory', 'answers' => function($query) {
-                $query->select('id', 'id_question', 'answer'); 
-            }])->find($id, ['id', 'question', 'image', 'id_question_sub_category']);
-        });
-    }
-
-    /**
-     * Navigasi Soal (Hanya merubah Index, bukan reload data berat)
-     */
-    public function goToQuestion($index)
-    {
-        if ($index >= 0 && $index < $this->totalQuestions) {
-            $this->currentIndex = $index;
-        }
-    }
-
-    /**
-     * [FIX 1 & 4] Simpan Jawaban DAN pindah ke soal berikutnya dalam 1 Livewire roundtrip.
-     * Dipanggil oleh tombol "Simpan & Lanjutkan" (bukan soal terakhir).
-     */
-    public function saveAnswerAndNext($answerId, $isDoubtful = false): bool
-    {
-        $saved = $this->saveAnswerToDb($answerId, $isDoubtful);
-
-        if ($this->currentIndex < $this->totalQuestions - 1) {
-            $this->currentIndex++;
-        }
-
-        return $saved;
-    }
-
-    /**
-     * Simpan Jawaban tanpa pindah soal.
-     * Dipanggil oleh tombol "Simpan & Kumpulkan" (soal terakhir).
-     */
-    public function saveAnswer($answerId, $isDoubtful = false): bool
-    {
-        return $this->saveAnswerToDb($answerId, $isDoubtful);
-    }
-
-    /**
-     * Cek apakah waktu ujian masih berlaku (dengan grace period 2 menit).
-     * Grace period dibutuhkan agar jawaban terakhir + bulk sync sempat masuk.
-     */
-    private function isWithinTimeLimit(): bool
-    {
-        if (!$this->userTryout || !$this->userTryout->ended_at) {
-            return false;
-        }
-
-        return Carbon::now()->isBefore(
-            Carbon::parse($this->userTryout->ended_at)->addMinutes(2)
-        );
-    }
-
-    /**
-     * [PRIVATE] Core logic penyimpanan jawaban ke DB.
-     * [FIX 4] Menggunakan Cache untuk query poin agar tidak hit DB setiap klik.
-     */
-    private function saveAnswerToDb($answerId, $isDoubtful = false): bool
-    {
-        try {
-            // Tolak penyimpanan jika sudah melewati deadline + grace period
-            if (!$this->isWithinTimeLimit()) {
-                return false;
-            }
-
-            $questionId = $this->questionIds[$this->currentIndex];
-
-            // [FIX 4] Cache poin per jawaban selama 1 jam â€” poin tidak berubah saat ujian
-            $points = 0;
-            if ($answerId) {
-                $points = Cache::remember("answer_points_{$answerId}", 3600, function () use ($answerId) {
-                    return DB::table('answers')->where('id', $answerId)->value('points') ?? 0;
-                });
-            }
-
-            UserAnswer::updateOrCreate(
-                ['user_tryout_id' => $this->userTryout->id, 'question_id' => $questionId],
-                [
-                    'id_user'     => Auth::id(),
-                    'answer_id'   => $answerId,
-                    'is_doubtful' => $isDoubtful,
-                    'score'       => $points,
-                ]
-            );
-
-            // Update status sidebar lokal (ringan, hanya flag)
-            $this->questionStatus[$questionId] = [
-                'answered'    => !is_null($answerId),
-                'is_doubtful' => $isDoubtful,
-                'selected_id' => $answerId,
-            ];
-
-            $this->calculateProgress();
+        if (empty($payload)) {
             return true;
-        } catch (\Exception $e) {
-            report($e);
+        }
+
+        $userTryout = UserTryout::select('ended_at', 'is_completed')
+            ->where('id', $this->userTryoutId)
+            ->where('id_user', $this->userId)
+            ->first();
+        if (!$userTryout || $userTryout->is_completed) {
             return false;
         }
+        if (Carbon::now()->isAfter(Carbon::parse($userTryout->ended_at)->addMinutes(2))) {
+            return false;
+        }
+
+        $payload = array_slice($payload, 0, 300);
+
+        // [FIX #F] Whitelist: hanya izinkan questionId milik tryout ini
+        $validQuestionIds = collect(json_decode($this->questionsJson, true) ?? [])
+            ->pluck('id')
+            ->flip()
+            ->all();
+
+        $answerIds = collect($payload)
+            ->pluck('answerId')
+            ->filter(fn ($id) => is_numeric($id) && $id > 0)
+            ->unique()->values()->all();
+
+        $answersData = empty($answerIds)
+            ? []
+            : DB::table('answers')->whereIn('id', $answerIds)->get(['id', 'id_question', 'points'])->keyBy('id')->all();
+
+        $now = now();
+
+        $records = collect($payload)
+            ->filter(fn ($item) => isset($item['questionId']) && is_numeric($item['questionId']) && isset($validQuestionIds[(int)$item['questionId']]))
+            ->map(function ($item) use ($answersData, $now) {
+                $qId = (int) $item['questionId'];
+                $aId = (isset($item['answerId']) && is_numeric($item['answerId']) && $item['answerId'] > 0) ? (int)$item['answerId'] : null;
+                
+                // Pastikan answer_id ada dan benar-benar milik question_id ini
+                $ans = $aId && isset($answersData[$aId]) ? $answersData[$aId] : null;
+                $validAnswerId = ($ans && $ans->id_question == $qId) ? $ans->id : null;
+                $score = $validAnswerId ? (float) $ans->points : 0;
+                
+                return [
+                    'user_tryout_id' => $this->userTryoutId,
+                    'id_user'        => $this->userId,
+                    'question_id'    => $qId,
+                    'answer_id'      => $validAnswerId,
+                    'is_doubtful'    => (bool) ($item['isDoubtful'] ?? false),
+                    'score'          => $score,
+                    'created_at'     => $now,
+                    'updated_at'     => $now,
+                ];
+            })
+            ->values()->all();
+
+        if (empty($records)) {
+            return true;
+        }
+
+        UserAnswer::upsert(
+            $records,
+            ['user_tryout_id', 'question_id'],
+            ['answer_id', 'is_doubtful', 'score', 'updated_at']
+        );
+
+        return true;
     }
 
-    private function calculateProgress()
+    // =========================================================================
+    // FINISH EXAM
+    // =========================================================================
+
+    public function finishExam(): void
     {
-        $answeredCount = collect($this->questionStatus)->where('answered', true)->count();
-        $this->progressPercent = $this->totalQuestions > 0 
-            ? round(($answeredCount / $this->totalQuestions) * 100, 1) 
-            : 0;
+        $userTryout = UserTryout::where('id', $this->userTryoutId)
+            ->where('id_user', $this->userId)
+            ->first();
+
+        if (!$userTryout) {
+            $this->redirectRoute('tryout.my-tryouts', navigate: true);
+            return;
+        }
+
+        if ($userTryout->is_completed) {
+            $this->redirectRoute('tryout.my-results', [$this->tryout->slug], navigate: true);
+            return;
+        }
+
+        $this->forceFinishExam($userTryout);
+        $this->redirectRoute('tryout.my-results', [$this->tryout->slug], navigate: true);
     }
 
-    public function finishExam()
-    {
-        $this->forceFinishExam($this->userTryout);
-        session()->flash('success', 'Ujian telah berhasil dikumpulkan.');
-        return $this->redirect(route('tryout.my-results', $this->tryout->slug), navigate: true);
-    }
-
-    private function forceFinishExam(UserTryout $userTryout)
+    private function forceFinishExam(UserTryout $userTryout): void
     {
         DB::transaction(function () use ($userTryout) {
-            // [BUG FIX #4] Jangan overwrite ended_at jika sudah terisi
-            // agar waktu pengerjaan yang tercatat akurat sesuai deadline aslinya.
-            $updateData = ['is_completed' => true];
+
+            $updates = ['is_completed' => true];
             if (!$userTryout->ended_at) {
-                $updateData['ended_at'] = Carbon::now();
+                $updates['ended_at'] = Carbon::now();
             }
-            $userTryout->update($updateData);
+            $userTryout->update($updates);
 
-            if ($userTryout->attempt == 1) {
-                $savedAnswers = UserAnswer::where('user_tryout_id', $userTryout->id)->get();
-                $totalScore   = $savedAnswers->sum('score');
+            if ($userTryout->attempt !== 1) {
+                return;
+            }
 
-                // 1. Simpan Ranking
-                Ranking::updateOrCreate(
-                    ['id_user' => Auth::id(), 'tryout_id' => $userTryout->tryout_id],
-                    ['score'   => $totalScore]
+            $answers    = UserAnswer::where('user_tryout_id', $userTryout->id)->get();
+            $totalScore = $answers->sum('score');
+
+            Ranking::updateOrCreate(
+                ['id_user' => $userTryout->id_user, 'tryout_id' => $userTryout->tryout_id],
+                ['score'   => $totalScore]
+            );
+
+            $questions = $this->tryout
+                ->questions()
+                ->with('subCategory:id,question_category_id')
+                ->get(['id', 'id_question_categories', 'id_question_sub_category']);
+
+            $answersByQuestion = $answers->keyBy('question_id');
+            $summary           = [];
+
+            foreach ($questions as $q) {
+                $catId = $q->subCategory->question_category_id
+                    ?? $q->id_question_categories
+                    ?? 0;
+
+                if (!isset($summary[$catId])) {
+                    $summary[$catId] = ['score' => 0, 'total' => 0, 'correct' => 0, 'wrong' => 0, 'unanswered' => 0];
+                }
+
+                $summary[$catId]['total']++;
+                $ans = $answersByQuestion->get($q->id);
+
+                if ($ans && $ans->answer_id) {
+                    $summary[$catId]['score'] += $ans->score;
+                    $ans->score > 0 ? $summary[$catId]['correct']++ : $summary[$catId]['wrong']++;
+                } else {
+                    $summary[$catId]['unanswered']++;
+                }
+            }
+
+            $now     = Carbon::now();
+            $records = collect($summary)->map(fn ($stat, $catId) => [
+                'user_tryout_id'       => $userTryout->id,
+                'question_category_id' => $catId,
+                'score'                => $stat['score'],
+                'total_questions'      => $stat['total'],
+                'correct_count'        => $stat['correct'],
+                'wrong_count'          => $stat['wrong'],
+                'unanswered_count'     => $stat['unanswered'],
+                'created_at'           => $now,
+                'updated_at'           => $now,
+            ])->values()->all();
+
+            if (!empty($records)) {
+                TryoutCategoryScore::upsert(
+                    $records,
+                    ['user_tryout_id', 'question_category_id'],
+                    ['score', 'total_questions', 'correct_count', 'wrong_count', 'unanswered_count', 'updated_at']
                 );
-
-                // 2. Kalkulasi Rapor per Kategori
-                $answersByQuestion = $savedAnswers->keyBy('question_id');
-                // Ambil juga subCategory untuk fixing mapping kategori
-                $questions = $this->tryout->questions()->with('subCategory')->get(['id', 'id_question_categories', 'id_question_sub_category']);
-
-                // [BUG FIX #5] Hitung summary per kategori lengkap dengan benar/salah/kosong
-                $summary = [];
-                foreach ($questions as $q) {
-                    $catId = $q->subCategory->question_category_id ?? $q->id_question_categories ?? 0;
-                    $ans   = $answersByQuestion->get($q->id);
-
-                    if (!isset($summary[$catId])) {
-                        $summary[$catId] = [
-                            'score'   => 0,
-                            'total'   => 0,
-                            'correct' => 0,
-                            'wrong'   => 0,
-                            'unanswered' => 0,
-                        ];
-                    }
-
-                    $summary[$catId]['total']++;
-
-                    if ($ans && $ans->answer_id) {
-                        $summary[$catId]['score'] += $ans->score;
-                        // Skor > 0 berarti jawaban benar, <= 0 berarti salah
-                        if ($ans->score > 0) {
-                            $summary[$catId]['correct']++;
-                        } else {
-                            $summary[$catId]['wrong']++;
-                        }
-                    } else {
-                        $summary[$catId]['unanswered']++;
-                    }
-                }
-
-                // Siapkan array records lalu 1x upsert
-                $now     = Carbon::now();
-                $records = [];
-                foreach ($summary as $catId => $stat) {
-                    $records[] = [
-                        'user_tryout_id'       => $userTryout->id,
-                        'question_category_id' => $catId,
-                        'score'                => $stat['score'],
-                        'total_questions'      => $stat['total'],
-                        'correct_count'        => $stat['correct'],
-                        'wrong_count'          => $stat['wrong'],
-                        'unanswered_count'     => $stat['unanswered'],
-                        'created_at'           => $now,
-                        'updated_at'           => $now,
-                    ];
-                }
-
-                if (!empty($records)) {
-                    TryoutCategoryScore::upsert(
-                        $records,
-                        ['user_tryout_id', 'question_category_id'], // unique key
-                        ['score', 'total_questions', 'correct_count', 'wrong_count', 'unanswered_count', 'updated_at']
-                    );
-                }
             }
         });
     }
 
-    /**
-     * Bulk save jawaban dari localStorage (recovery / sync).
-     * Dipanggil oleh Alpine saat page load atau sebelum submit untuk mengirim
-     * jawaban-jawaban yang gagal tersimpan sebelumnya.
-     *
-     * TIDAK boleh cek isWithinTimeLimit() karena method ini untuk RECOVERY
-     * jawaban yang dijawab SEBELUM deadline, hanya tertunda oleh masalah jaringan.
-     */
-    public function bulkSaveAnswers(array $answers): array
-    {
-        $results = [];
-        $userId = Auth::id();
+    // =========================================================================
+    // UTILITY
+    // =========================================================================
 
-        DB::beginTransaction();
-        try {
-            foreach ($answers as $item) {
-                $questionId = (int) ($item['questionId'] ?? 0);
-                $answerId   = isset($item['answerId']) ? (int) $item['answerId'] : null;
-                $isDoubtful = (bool) ($item['isDoubtful'] ?? false);
-
-                // Validasi: soal harus milik tryout ini
-                if (!in_array($questionId, $this->questionIds)) {
-                    $results[$questionId] = 'invalid';
-                    continue;
-                }
-
-                $points = 0;
-                if ($answerId) {
-                    $points = Cache::remember("answer_points_{$answerId}", 3600, function () use ($answerId) {
-                        return DB::table('answers')->where('id', $answerId)->value('points') ?? 0;
-                    });
-                }
-
-                UserAnswer::updateOrCreate(
-                    ['user_tryout_id' => $this->userTryout->id, 'question_id' => $questionId],
-                    [
-                        'id_user'     => $userId,
-                        'answer_id'   => $answerId,
-                        'is_doubtful' => $isDoubtful,
-                        'score'       => $points,
-                    ]
-                );
-
-                $this->questionStatus[$questionId] = [
-                    'answered'    => !is_null($answerId),
-                    'is_doubtful' => $isDoubtful,
-                    'selected_id' => $answerId,
-                ];
-
-                $results[$questionId] = 'ok';
-            }
-            DB::commit();
-            $this->calculateProgress();
-        } catch (\Exception $e) {
-            DB::rollBack();
-            report($e);
-            foreach ($answers as $item) {
-                $qId = (int) ($item['questionId'] ?? 0);
-                if (!isset($results[$qId])) {
-                    $results[$qId] = 'error';
-                }
-            }
-        }
-
-        return $results;
-    }
+    #[Renderless]
+    public function ping(): void {}
 
     public function render()
     {
-        return view('livewire.customers.tryout-worksheet', [
-            // Pastikan menggunakan camelCase sesuai nama fungsi #[Computed]
-            'currentQuestion' => $this->currentQuestion 
-        ])->layout('layouts.blank');
-    }
-
-    /**
-     * Dummy method untuk keep-alive session
-     * Menjaga agar sesi PHP tidak expired (419) selama tryout berlangsung lama.
-     */
-    public function ping()
-    {
-        return true;
+        return view('livewire.customers.tryout-worksheet')
+            ->layout('layouts.blank');
     }
 }
