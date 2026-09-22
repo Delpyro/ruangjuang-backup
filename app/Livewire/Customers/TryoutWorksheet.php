@@ -16,7 +16,8 @@ use Carbon\Carbon;
 
 class TryoutWorksheet extends Component
 {
-    public Tryout $tryout;
+    #[Locked]
+    public int $tryoutId;
 
     #[Locked]
     public int $userTryoutId;
@@ -24,12 +25,13 @@ class TryoutWorksheet extends Component
     #[Locked]
     public int $userId;
 
-    public string $questionsJson = '[]';
+    
 
     /** Timestamp server saat mount (ms) - untuk koreksi clock skew */
     public int $serverTimestamp = 0;
     public string $endedAt = '';
     public string $title = '';
+    public string $tryoutSlug = '';
 
     // =========================================================================
     // MOUNT
@@ -37,8 +39,9 @@ class TryoutWorksheet extends Component
 
     public function mount(Tryout $tryout, int $attempt = 1): void
     {
-        $this->tryout  = $tryout;
+        $this->tryoutId = $tryout->id;
         $this->title   = $tryout->title;
+        $this->tryoutSlug = $tryout->slug;
         $this->userId  = Auth::id();
 
         $userTryout = UserTryout::where('id_user', $this->userId)
@@ -61,39 +64,6 @@ class TryoutWorksheet extends Component
         $this->endedAt         = $userTryout->ended_at->toIso8601String();
         $this->serverTimestamp = (int)(microtime(true) * 1000);
 
-        // Load SEMUA soal aktif — 1 query dengan eager load
-        $questions = $tryout->activeQuestions()
-            ->with([
-                'answers:id,id_question,answer,points',
-                'subCategory:id,name,question_category_id',
-            ])
-            ->orderBy('id', 'asc')
-            ->get(['id', 'question', 'image', 'explanation', 'id_question_sub_category']);
-
-        // Load semua jawaban tersimpan — 1 query
-        $savedAnswers = UserAnswer::where('user_tryout_id', $userTryout->id)
-            ->get(['question_id', 'answer_id', 'is_doubtful'])
-            ->keyBy('question_id');
-
-        // Susun JSON untuk Alpine
-        $this->questionsJson = $questions->map(function ($q, $qIndex) use ($savedAnswers) {
-            $letters = ['A', 'B', 'C', 'D', 'E'];
-            return [
-                'id'           => $q->id,
-                'html'         => $q->question,
-                'image'        => $q->image ? asset('storage/' . $q->image) : null,
-                'subcategory'  => $q->subCategory?->name ?? 'Soal',
-                'answers'      => $q->answers->sortBy('id')->values()->map(function ($a, $i) use ($letters) {
-                    return [
-                        'id'     => $a->id,
-                        'html'   => $a->answer,
-                        'letter' => $letters[$i] ?? chr(65 + $i),
-                    ];
-                })->all(),
-                'savedAnswerId' => $savedAnswers->get($q->id)?->answer_id,
-                'savedDoubtful' => (bool) ($savedAnswers->get($q->id)?->is_doubtful ?? false),
-            ];
-        })->toJson();
     }
 
     // =========================================================================
@@ -120,8 +90,11 @@ class TryoutWorksheet extends Component
 
         $payload = array_slice($payload, 0, 300);
 
-        // [FIX #F] Whitelist: hanya izinkan questionId milik tryout ini
-        $validQuestionIds = collect(json_decode($this->questionsJson, true) ?? [])
+        // [FIX #F] Whitelist dari DB, bukan dari payload (menghemat 500KB bandwidth)
+        $tryoutId = \App\Models\UserTryout::where('id', $this->userTryoutId)->value('tryout_id');
+        $validQuestionIds = \Illuminate\Support\Facades\DB::table('questions')
+            ->where('id_tryout', $tryoutId)
+            ->where('is_active', true)
             ->pluck('id')
             ->flip()
             ->all();
@@ -190,12 +163,12 @@ class TryoutWorksheet extends Component
         }
 
         if ($userTryout->is_completed) {
-            $this->redirectRoute('tryout.my-results', [$this->tryout->slug], navigate: true);
+            $this->redirectRoute('tryout.my-results', [$this->tryoutSlug], navigate: true);
             return;
         }
 
         $this->forceFinishExam($userTryout);
-        $this->redirectRoute('tryout.my-results', [$this->tryout->slug], navigate: true);
+        $this->redirectRoute('tryout.my-results', [$this->tryoutSlug], navigate: true);
     }
 
     private function forceFinishExam(UserTryout $userTryout): void
@@ -220,7 +193,7 @@ class TryoutWorksheet extends Component
                 ['score'   => $totalScore]
             );
 
-            $questions = $this->tryout
+            $questions = \App\Models\Tryout::find($userTryout->tryout_id)
                 ->questions()
                 ->with('subCategory:id,question_category_id')
                 ->get(['id', 'id_question_categories', 'id_question_sub_category']);
@@ -280,7 +253,41 @@ class TryoutWorksheet extends Component
 
     public function render()
     {
-        return view('livewire.customers.tryout-worksheet')
-            ->layout('layouts.blank');
+        $tryout = \App\Models\Tryout::find($this->tryoutId);
+        
+        $questions = $tryout->activeQuestions()
+            ->with([
+                'answers:id,id_question,answer,points',
+                'subCategory:id,name,question_category_id',
+            ])
+            ->orderBy('id', 'asc')
+            ->get(['id', 'question', 'image', 'explanation', 'id_question_sub_category']);
+
+        $savedAnswers = \App\Models\UserAnswer::where('user_tryout_id', $this->userTryoutId)
+            ->get(['question_id', 'answer_id', 'is_doubtful'])
+            ->keyBy('question_id');
+
+        $questionsJson = json_encode($questions->map(function ($q, $qIndex) use ($savedAnswers) {
+            $letters = ['A', 'B', 'C', 'D', 'E'];
+            return [
+                'id'           => $q->id,
+                'html'         => $q->question,
+                'image'        => $q->image ? asset('storage/' . $q->image) : null,
+                'subcategory'  => $q->subCategory?->name ?? 'Soal',
+                'answers'      => $q->answers->sortBy('id')->values()->map(function ($a, $i) use ($letters) {
+                    return [
+                        'id'     => $a->id,
+                        'html'   => $a->answer,
+                        'letter' => $letters[$i] ?? chr(65 + $i),
+                    ];
+                })->all(),
+                'savedAnswerId' => $savedAnswers->get($q->id)?->answer_id,
+                'savedDoubtful' => (bool) ($savedAnswers->get($q->id)?->is_doubtful ?? false),
+            ];
+        })->all(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+
+        return view('livewire.customers.tryout-worksheet', [
+            'questionsJson' => $questionsJson
+        ])->layout('layouts.blank');
     }
 }
