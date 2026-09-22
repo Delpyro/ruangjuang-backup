@@ -292,7 +292,7 @@ function cbtApp() {
 
         currentIndex: 0,
 
-        clockOffset: (cbt.serverTimestamp || Date.now()) - Date.now(),
+        
 
         // STATE DUA LAPISAN
         committedAnswers: {},
@@ -335,6 +335,7 @@ function cbtApp() {
             this.initAutoSave();
             this.restoreFromLocalStorage();
             this.registerEventListeners();
+            this.preloadImages();
         },
 
         // [FIX #D,E] Lifecycle cleanup — dipanggil Alpine saat komponen di-destroy
@@ -351,6 +352,10 @@ function cbtApp() {
             if (this._abortController) this._abortController.abort();
             this._abortController = new AbortController();
             const signal = this._abortController.signal;
+            
+            // [ANTI-CHEAT] Cegah Klik Kanan & Copy
+            document.addEventListener('contextmenu', (e) => e.preventDefault(), { signal });
+            document.addEventListener('copy', (e) => e.preventDefault(), { signal });
 
             // Finish trigger dari SweetAlert confirm
             window.addEventListener(
@@ -406,6 +411,27 @@ function cbtApp() {
             // Keep-alive ping tiap 4 menit
             if (this._pingInterval) clearInterval(this._pingInterval);
             this._pingInterval = setInterval(() => { try { this.$wire.ping(); } catch(e) {} }, 4 * 60 * 1000);
+        },
+
+
+        preloadImages() {
+            setTimeout(() => {
+                this.questions.forEach(q => {
+                    if (q.image) { const img = new Image(); img.src = q.image; }
+                    if (q.html) {
+                        const div = document.createElement('div'); div.innerHTML = q.html;
+                        div.querySelectorAll('img').forEach(imgTag => { if (imgTag.src) { const img = new Image(); img.src = imgTag.src; } });
+                    }
+                    if (q.answers) {
+                        q.answers.forEach(a => {
+                            if (a.html) {
+                                const div = document.createElement('div'); div.innerHTML = a.html;
+                                div.querySelectorAll('img').forEach(imgTag => { if (imgTag.src) { const img = new Image(); img.src = imgTag.src; } });
+                            }
+                        });
+                    }
+                });
+            }, 1000);
         },
 
         // ============================
@@ -560,7 +586,8 @@ function cbtApp() {
         initTimer() {
             const deadline = new Date(cbt.endedAt).getTime();
             const timerEl  = document.getElementById('timer');
-            const serverNow = () => Date.now() + this.clockOffset;
+            // Gunakan performance.now() agar kebal terhadap perubahan jam OS Windows/Mac oleh user
+            const serverNow = () => cbt.serverTimestamp + performance.now();
 
             const tick = () => {
                 const remaining = Math.floor((deadline - serverNow()) / 1000);
