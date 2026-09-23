@@ -50,13 +50,13 @@ class TryoutWorksheet extends Component
             ->first();
 
         if (!$userTryout || $userTryout->is_completed || !$userTryout->ended_at) {
-            $this->redirectRoute('tryout.my-tryouts', navigate: true);
+            $this->redirectRoute('tryout.my-tryouts', navigate: false);
             return;
         }
 
         if (Carbon::now()->isAfter($userTryout->ended_at)) {
             $this->forceFinishExam($userTryout);
-            $this->redirectRoute('tryout.my-results', [$tryout->slug], navigate: true);
+            $this->redirectRoute('tryout.my-results', [$tryout->slug], navigate: false);
             return;
         }
 
@@ -158,17 +158,17 @@ class TryoutWorksheet extends Component
             ->first();
 
         if (!$userTryout) {
-            $this->redirectRoute('tryout.my-tryouts', navigate: true);
+            $this->redirectRoute('tryout.my-tryouts', navigate: false);
             return;
         }
 
         if ($userTryout->is_completed) {
-            $this->redirectRoute('tryout.my-results', [$this->tryoutSlug], navigate: true);
+            $this->redirectRoute('tryout.my-results', [$this->tryoutSlug], navigate: false);
             return;
         }
 
         $this->forceFinishExam($userTryout);
-        $this->redirectRoute('tryout.my-results', [$this->tryoutSlug], navigate: true);
+        $this->redirectRoute('tryout.my-results', [$this->tryoutSlug], navigate: false);
     }
 
     private function forceFinishExam(UserTryout $userTryout): void
