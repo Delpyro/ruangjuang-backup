@@ -455,6 +455,18 @@ function cbtApp() {
         // ============================
         navigateTo(index) {
             if (index < 0 || index >= this.questions.length || this.isFinishing || this.isSaving) return;
+            
+            if (this.currentQuestion) {
+                const qId = this.currentQuestion.id;
+                this.committedAnswers[qId] = {
+                    answerId:   this.pendingAnswerId ? parseInt(this.pendingAnswerId) : null,
+                    isDoubtful: this.pendingIsDoubtful,
+                };
+                this.committedAnswers = { ...this.committedAnswers };
+                this.dirtyIds.add(qId);
+                this.saveToLocalStorage();
+            }
+            
             this.isSaving = true;
             this.currentIndex = index;
             this.loadPendingFromCommitted(index);

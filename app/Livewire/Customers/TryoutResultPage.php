@@ -14,7 +14,6 @@ use Carbon\Carbon; // Pastikan import Carbon
 class TryoutResultPage extends Component
 {
     public Tryout $tryout;
-    public ?EloquentCollection $allCompletedAttempts = null;
     public array $resultsData = [];
 
     // --- Properti untuk Modal Review ---
@@ -26,7 +25,6 @@ class TryoutResultPage extends Component
     public bool $hasReviewed = false;
     
     // --- Properti internal ---
-    public $allTryoutQuestions; 
     public $userId;
 
     /**
@@ -38,14 +36,14 @@ class TryoutResultPage extends Component
         $this->userId = Auth::id();
 
         // 1. Cek pengerjaan yang sudah selesai
-        $this->allCompletedAttempts = UserTryout::where('id_user', $this->userId)
+        $allCompletedAttempts = UserTryout::where('id_user', $this->userId)
             ->where('tryout_id', $this->tryout->id)
             ->where('is_completed', true)
             ->orderBy('attempt', 'asc')
             ->get();
 
         // 2. Jika tidak ada, redirect
-        if ($this->allCompletedAttempts->isEmpty()) {
+        if ($allCompletedAttempts->isEmpty()) {
             session()->flash('error', 'Hasil tryout belum tersedia atau belum Anda selesaikan.');
             return $this->redirect(route('tryout.detail', $tryout->slug));
         }
@@ -55,14 +53,7 @@ class TryoutResultPage extends Component
                                      ->where('tryout_id', $this->tryout->id)
                                      ->exists();
 
-        // 4. Muat soal (dibutuhkan untuk kalkulasi)
-        // [BUG FIX] Pakai questions() biasa (termasuk inactive) agar soal yang
-        // dinonaktifkan admin SETELAH user ujian tetap dihitung skornya (tidak hilang/drop)
-        $this->allTryoutQuestions = $this->tryout->questions()
-                                             ->with(['category', 'subCategory.category'])
-                                             ->get();
-
-        // 5. Logika Gated (Terkunci)
+        // 4. Logika Gated (Terkunci)
         if ($this->hasReviewed) {
             // --- JIKA SUDAH REVIEW ---
             $this->loadAndCalculateResults();
@@ -79,8 +70,18 @@ class TryoutResultPage extends Component
     {
         $this->resultsData = []; 
 
-        foreach ($this->allCompletedAttempts as $attempt) {
-            $this->resultsData[] = $this->calculateResultForAttempt($attempt, $this->allTryoutQuestions);
+        $allCompletedAttempts = UserTryout::where('id_user', $this->userId)
+            ->where('tryout_id', $this->tryout->id)
+            ->where('is_completed', true)
+            ->orderBy('attempt', 'asc')
+            ->get();
+
+        $allTryoutQuestions = $this->tryout->questions()
+                                             ->with(['category', 'subCategory.category'])
+                                             ->get();
+
+        foreach ($allCompletedAttempts as $attempt) {
+            $this->resultsData[] = $this->calculateResultForAttempt($attempt, $allTryoutQuestions);
         }
     }
 
